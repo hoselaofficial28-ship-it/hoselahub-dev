@@ -120,6 +120,13 @@ function gasCall(action, args, success, failure) {
  }
  return;
  }
+ if (location.hostname.indexOf('github.io') !== -1) {
+ gasJsonp(action, args, function(data) {
+ if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
+ if (success) success(data);
+ }, failure || function(err){ console.error('GAS Error:', err); });
+ return;
+ }
  // Tambah timestamp untuk bust browser cache pada action non-cacheable
  var ts = CACHEABLE.indexOf(action) !== -1 ? '' : '&_t=' + Date.now();
  var url = GAS_URL + '?action=' + encodeURIComponent(action) + '&args=' + encodeURIComponent(JSON.stringify(args || [])) + ts;
@@ -142,6 +149,10 @@ function gasCall(action, args, success, failure) {
 function warmUpGAS() {
  if (window.google && google.script && google.script.run) {
  gasCall('ping', [], function(){}, function(){});
+ return;
+ }
+ if (location.hostname.indexOf('github.io') !== -1) {
+ gasJsonp('ping', [], function(){}, function(){});
  return;
  }
  fetch(GAS_URL + '?action=ping&args=[]', { redirect: 'follow' }).catch(function(){ gasJsonp('ping', [], function(){}, function(){}); });
