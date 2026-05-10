@@ -65,6 +65,36 @@ function cacheClear(key) {
 // Actions yang boleh di-cache (read-only)
 var CACHEABLE = ['getJobdeskList','getStaffByBagian','getJobdeskByBagian','getJobdeskByJabatan','getUserKPI','getKalenderLibur','getAllUsers'];
 
+function gasJsonp(action, args, success, failure) {
+ var cbName = 'hh_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+ var script = document.createElement('script');
+ var done = false;
+ var cleanup = function() {
+ done = true;
+ if (script.parentNode) script.parentNode.removeChild(script);
+ try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+ };
+ window[cbName] = function(data) {
+ cleanup();
+ if (success) success(data);
+ };
+ script.onerror = function() {
+ cleanup();
+ if (failure) failure(new Error('JSONP request failed'));
+ };
+ var ts = CACHEABLE.indexOf(action) !== -1 ? '' : '&_t=' + Date.now();
+ script.src = GAS_URL + '?action=' + encodeURIComponent(action) +
+ '&args=' + encodeURIComponent(JSON.stringify(args || [])) +
+ '&callback=' + encodeURIComponent(cbName) + ts;
+ document.head.appendChild(script);
+ setTimeout(function() {
+ if (!done) {
+ cleanup();
+ if (failure) failure(new Error('JSONP timeout'));
+ }
+ }, 20000);
+}
+
 function gasCall(action, args, success, failure) {
  var cacheKey = action + JSON.stringify(args || []);
  // Cek cache dulu
@@ -99,7 +129,13 @@ function gasCall(action, args, success, failure) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
  if (success) success(data);
  })
- .catch(failure || function(e){ console.error('GAS Error:', e); });
+ .catch(function(e) {
+ console.warn('Fetch GAS gagal, mencoba JSONP:', e);
+ gasJsonp(action, args, function(data) {
+ if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
+ if (success) success(data);
+ }, failure || function(err){ console.error('GAS Error:', err); });
+ });
 }
 
 // Warm up GAS saat app dibuka — ping dulu supaya tidak cold start saat login
@@ -108,7 +144,7 @@ function warmUpGAS() {
  gasCall('ping', [], function(){}, function(){});
  return;
  }
- fetch(GAS_URL + '?action=ping&args=[]', { redirect: 'follow' }).catch(function(){});
+ fetch(GAS_URL + '?action=ping&args=[]', { redirect: 'follow' }).catch(function(){ gasJsonp('ping', [], function(){}, function(){}); });
 }
 
 // Navigation history stack untuk swipe back
