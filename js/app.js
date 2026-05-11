@@ -145,9 +145,9 @@ function gasFormPost(action, args, success, failure) {
  addField('args', JSON.stringify(args || []));
  document.body.appendChild(iframe);
  document.body.appendChild(form);
- iframe.onload = function() { setTimeout(verifyAttendance, 1200); };
+ iframe.onload = function() { setTimeout(verifyAttendance, 2500); };
  form.submit();
- setTimeout(verifyAttendance, 9000);
+ setTimeout(verifyAttendance, 20000);
 }
 
 function gasCall(action, args, success, failure) {
@@ -1811,7 +1811,7 @@ function captureAttendancePhoto() {
  var canvas = document.getElementById('attendance-canvas');
  var img = document.getElementById('attendance-photo-preview');
  if (!video || !canvas || !video.videoWidth) { showToast('Kamera belum siap'); return; }
- var scale = Math.min(1, 900 / video.videoWidth);
+ var scale = Math.min(1, 720 / video.videoWidth);
  canvas.width = Math.round(video.videoWidth * scale);
  canvas.height = Math.round(video.videoHeight * scale);
  var ctx = canvas.getContext('2d');
@@ -1822,7 +1822,7 @@ function captureAttendancePhoto() {
  }
  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
  ctx.restore();
- _attendancePhotoData = canvas.toDataURL('image/jpeg', 0.72);
+ _attendancePhotoData = canvas.toDataURL('image/jpeg', 0.58);
  if (img) { img.src = _attendancePhotoData; img.style.display = 'block'; }
  video.style.display = 'none';
  stopAttendanceCamera();
