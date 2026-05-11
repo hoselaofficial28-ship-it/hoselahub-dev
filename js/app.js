@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511t';
+var APP_VERSION = '20260511u';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -453,6 +453,7 @@ function loadHome() {
 
  // Quote motivasi
  document.getElementById('home-quote').textContent = '"'+quote+'"';
+ startHomeClock();
 
  var menus = [
  {id:'s-jobdesk', icon:'clipboard', bg:'#dbeafe', label:'Jobdesk', sub:'Tugas & tanggung jawab'},
@@ -486,9 +487,7 @@ function loadHome() {
  menus.push({id:'s-ganti-pin', icon:'lock', bg:'#f1f5f9', label:'Ganti Sandi', sub:'Ubah PIN login kamu'});
  var prevBtn = document.querySelector('.preview-btn');
  if (prevBtn) prevBtn.style.display = (!isTouchDevice && (u.bagian === 'Owner' || u.bagian === 'Finance')) ? 'flex' : 'none';
- document.getElementById('home-menu').innerHTML = menus.map(function(m) {
- return '<div class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon" style="background:'+m.bg+'">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></div>';
- }).join('');
+ document.getElementById('home-menu').innerHTML = renderHomeMenuSections(menus);
 
  // Spinner reward untuk semua user
  document.getElementById('reward-section').innerHTML =
@@ -1029,6 +1028,55 @@ function renderAbsensiDetailHtml(res, bulanKey, scopeId) {
  allLembur.forEach(function(d){ html += '<br><span style="color:#065f46;font-size:10px">Lembur: '+detailLine(d, true)+'</span>'; });
  html += '</div></div>';
  return html;
+}
+
+var _homeClockTimer = null;
+function startHomeClock() {
+ function tick() {
+ var now = new Date();
+ var timeEl = document.getElementById('home-clock-time');
+ var dateEl = document.getElementById('home-clock-date');
+ if (!timeEl || !dateEl) return;
+ var dayNames = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+ var monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+ timeEl.textContent = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0') + ':' + String(now.getSeconds()).padStart(2,'0');
+ dateEl.textContent = dayNames[now.getDay()] + ', ' + now.getDate() + ' ' + monthNames[now.getMonth()] + ' ' + now.getFullYear();
+ }
+ tick();
+ if (_homeClockTimer) clearInterval(_homeClockTimer);
+ _homeClockTimer = setInterval(tick, 1000);
+}
+
+function menuCategory(m) {
+ if (['s-absensi-camera','s-catatan-kehadiran','s-izin','s-slip-gaji'].indexOf(m.id) !== -1) return 'Kehadiran & Personal';
+ if (['s-kelola-izin','s-rekap-bulanan','s-payroll','s-sanksi-manual','s-laporan-absensi','s-kalender'].indexOf(m.id) !== -1) return 'Finance & Owner';
+ if (['s-jobdesk','s-kpi-check','s-papan-peringkat','s-peraturan'].indexOf(m.id) !== -1) return 'Kerja & Produktivitas';
+ if (['s-pengumuman','s-ide','s-notifikasi','s-tambah-pengumuman'].indexOf(m.id) !== -1) return 'Komunikasi Tim';
+ return 'Akun';
+}
+
+function renderHomeMenuSections(menus) {
+ var order = ['Kehadiran & Personal','Kerja & Produktivitas','Komunikasi Tim','Finance & Owner','Akun'];
+ var desc = {
+ 'Kehadiran & Personal':'Absensi, riwayat, izin, gaji',
+ 'Kerja & Produktivitas':'Tugas, KPI, aturan kerja',
+ 'Komunikasi Tim':'Info, ide, dan notifikasi',
+ 'Finance & Owner':'Kontrol data dan payroll',
+ 'Akun':'Pengaturan akses'
+ };
+ var groups = {};
+ menus.forEach(function(m) {
+ var cat = menuCategory(m);
+ if (!groups[cat]) groups[cat] = [];
+ groups[cat].push(m);
+ });
+ return order.filter(function(cat){ return groups[cat] && groups[cat].length; }).map(function(cat) {
+ return '<section class="home-menu-section">'+
+ '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc[cat]+'</p></div></div>'+
+ '<div class="home-menu-grid">'+groups[cat].map(function(m) {
+ return '<div class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon" style="background:'+m.bg+'">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></div>';
+ }).join('')+'</div></section>';
+ }).join('');
 }
 
 function showBulanPicker() {
@@ -2255,13 +2303,30 @@ function renderAttendanceMatrix(res) {
  var item = (u.days && u.days[d]) || {};
  var masuk = item.masuk || '';
  var pulang = item.pulang || '';
- var statusClass = item.rejected ? ' rejected' : (item.absen ? ' absent' : (masuk || pulang ? ' filled' : ''));
+ var statusClass = '';
+ var statusLabel = '-';
+ if (item.rejected) {
+ statusClass = ' rejected';
+ statusLabel = 'Ditolak';
+ } else if (item.absen) {
+ statusClass = ' absent';
+ statusLabel = 'Absen';
+ } else if (masuk && pulang) {
+ statusClass = item.telat ? ' filled late' : ' filled complete';
+ statusLabel = item.telat ? 'Telat' : 'Lengkap';
+ } else if (masuk) {
+ statusClass = ' filled partial';
+ statusLabel = 'Belum pulang';
+ } else if (pulang) {
+ statusClass = ' filled partial';
+ statusLabel = 'Tanpa masuk';
+ }
  var dateObj = new Date(year, month - 1, d);
  if (dateObj.getDay() === 0) statusClass += ' sunday';
- var masukText = item.absen && !masuk ? 'A' : (masuk ? masuk.substring(0,5) : '-');
+ var timeText = (masuk ? masuk.substring(0,5) : '-') + ' / ' + (pulang ? pulang.substring(0,5) : '-');
  var click = _attendanceMatrixCanEdit ? ' onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)"' : '';
  days += '<button class="att-day'+statusClass+'"'+click+(_attendanceMatrixCanEdit?'':' type="button"')+'>'+
- '<span>'+d+'</span><small>'+masukText+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small></button>';
+ '<span>'+d+'</span><small>'+timeText+'</small><em>'+statusLabel+'</em></button>';
  }
  return '<div class="card att-user-card" data-search="'+(u.nama+' '+u.bagian+' '+u.jabatan).toLowerCase()+'">'+
  '<div class="att-user-head"><div><b>'+u.nama+'</b><p>'+u.jabatan+' · '+u.bagian+'</p></div><span>'+u.id+'</span></div>'+

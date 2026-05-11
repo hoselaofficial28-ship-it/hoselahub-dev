@@ -4,14 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Hosela Hub</title>
-<link rel="stylesheet" href="css/style.css?v=20260511t">
+<link rel="stylesheet" href="css/style.css?v=20260511u">
 
 
 
 
 
 
-<script src="js/manifest.js?v=20260511t"></script>
+<script src="js/manifest.js?v=20260511u"></script>
 <meta name="theme-color" content="#0e4fa3">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -96,6 +96,20 @@
  </div>
  </div>
  <div class="content">
+ <div class="home-clock-card">
+ <div class="home-clock-head">
+ <div>
+ <div class="home-clock-label">Waktu sekarang</div>
+ <div class="home-clock-date" id="home-clock-date">—</div>
+ </div>
+ <div class="home-clock-logo"><img src="assets/logo.png" alt="Hosela Hub"></div>
+ </div>
+ <div class="home-clock-time" id="home-clock-time">--:--:--</div>
+ <button class="home-clock-action" onclick="goTo('s-absensi-camera')">
+ <span class="home-clock-fingerprint"></span>
+ <span>Absensi Kamera</span>
+ </button>
+ </div>
  <!-- Banner anomali tap -->
  <div id="anomali-banner" style="display:none;background:#dc2626;border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="goTo('s-notifikasi')">
  <div style="display:flex;align-items:center;gap:8px">
@@ -347,7 +361,7 @@
  <div class="content" id="laporan-list"><div class="empty-state"><div class="empty-icon"></div>Memuat...</div></div>
 </div>
 
-<script src="js/app.js?v=20260511t"></script>
+<script src="js/app.js?v=20260511u"></script>
 </div><!-- /app-wrap -->
 
 <!-- KPI CHECK -->
@@ -648,7 +662,7 @@
 <!-- PHONE PREVIEW -->
 <button class="preview-btn" onclick="togglePreview()"> Preview HP</button>
 
-<script src="js/payroll.js?v=20260511t"></script>
-<script src="js/preview.js?v=20260511t"></script>
+<script src="js/payroll.js?v=20260511u"></script>
+<script src="js/preview.js?v=20260511u"></script>
 </body>
 </html>

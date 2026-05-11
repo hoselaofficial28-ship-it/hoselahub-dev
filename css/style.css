@@ -572,6 +572,42 @@ textarea.form-input{line-height:1.45}
 .attendance-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--gray-border);font-size:12px}
 .attendance-row:last-child{border-bottom:none}
 .attendance-row b{color:var(--text-dark)}
+.home-clock-card{
+  margin:-4px 0 14px;
+  padding:18px;
+  border-radius:18px;
+  background:radial-gradient(circle at 50% 34%,rgba(0,210,190,.16),transparent 32%),linear-gradient(155deg,#ffffff 0%,#f7fbff 54%,#eaf7ff 100%);
+  border:1px solid #dfe8f4;
+  box-shadow:0 16px 38px rgba(16,24,40,.08);
+}
+.home-clock-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.home-clock-label{font-size:12px;font-weight:900;color:#101828}
+.home-clock-date{font-size:12px;font-weight:700;color:#667085;margin-top:3px}
+.home-clock-logo{width:48px;height:48px;border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(16,24,40,.1);display:flex;align-items:center;justify-content:center;padding:7px;flex-shrink:0}
+.home-clock-logo img{width:100%;height:100%;object-fit:contain;display:block}
+.home-clock-time{text-align:center;font-size:44px;line-height:1;font-weight:950;color:#101828;font-variant-numeric:tabular-nums;letter-spacing:0;margin:12px 0 16px}
+.home-clock-action{width:100%;min-height:52px;border:0;border-radius:16px;background:linear-gradient(135deg,#15d8be 0%,#0aa7e6 100%);color:#082033;font-size:14px;font-weight:950;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 12px 28px rgba(10,167,230,.2);cursor:pointer}
+.home-clock-action:active{transform:scale(.99)}
+.home-clock-fingerprint{width:24px;height:24px;display:inline-block;background:#082033;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 11a3 3 0 0 0-3 3c0 2-1 4-2 5m10 0c-1-1-2-3-2-5a3 3 0 0 0-3-3zm-7-1a7 7 0 0 1 14 0M4 14a8 8 0 1 1 16 0M8 22c2-2 3-5 3-8a1 1 0 1 1 2 0c0 3 1 6 3 8'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M12 11a3 3 0 0 0-3 3c0 2-1 4-2 5m10 0c-1-1-2-3-2-5a3 3 0 0 0-3-3zm-7-1a7 7 0 0 1 14 0M4 14a8 8 0 1 1 16 0M8 22c2-2 3-5 3-8a1 1 0 1 1 2 0c0 3 1 6 3 8'/%3E%3C/svg%3E") center/contain no-repeat}
+.home-menu-section{margin:0 0 14px;padding:16px;border-radius:18px;background:rgba(255,255,255,.9);border:1px solid #dfe8f4;box-shadow:0 10px 28px rgba(16,24,40,.055)}
+.home-section-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:14px}
+.home-section-head>span{width:10px;height:10px;border-radius:50%;margin-top:5px;background:linear-gradient(135deg,#15d8be,#0aa7e6);box-shadow:0 0 0 5px rgba(21,216,190,.12);flex-shrink:0}
+.home-section-head h2{font-size:15px;font-weight:950;color:#101828;line-height:1.2}
+.home-section-head p{font-size:12px;font-weight:700;color:#667085;margin-top:3px}
+.home-menu-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.home-menu-grid .menu-card{min-height:126px;border-radius:16px;text-align:center;align-items:center;justify-content:center;padding:14px 10px}
+.home-menu-grid .menu-icon{width:48px;height:48px;border-radius:50%;margin:0 0 10px;background:linear-gradient(135deg,#d8fff5,#0fd6c2)!important;color:#062033;box-shadow:0 10px 22px rgba(15,214,194,.18)}
+.home-menu-grid .menu-card h3{font-size:13px}
+.home-menu-grid .menu-card p{font-size:10px;max-width:112px;margin-left:auto;margin-right:auto}
+.att-day{min-height:70px;padding:6px 3px}
+.att-day small{font-size:9px;white-space:nowrap;color:#475467}
+.att-day em{font-style:normal;font-size:8px;font-weight:900;line-height:1.05;color:#98a2b3;text-align:center;max-width:100%}
+.att-day.complete em{color:#067647}
+.att-day.late{background:#fffbeb;border-color:#fedf89}
+.att-day.late span,.att-day.late em{color:#b54708}
+.att-day.partial{background:#eff8ff;border-color:#b9e6fe}
+.att-day.partial em{color:#026aa2}
+.att-day.rejected em,.att-day.absent em{color:#b42318}
 @media (min-width:700px){
   body:not(.phone-mode) #app-wrap{max-width:460px;margin:0 auto;min-height:100vh;box-shadow:0 0 0 1px rgba(16,24,40,.06)}
 }
