@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511i';
+var APP_VERSION = '20260511j';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1827,13 +1827,46 @@ function loadAbsensiCamera() {
 
 function getAttendanceLocation() {
  if (!navigator.geolocation) { updateAttendanceLocationStatus('Browser tidak mendukung lokasi.', 'bad'); return; }
- navigator.geolocation.getCurrentPosition(function(pos) {
+ var triedFastFallback = false;
+ var watchId = null;
+ var done = false;
+ function acceptPosition(pos) {
+ if (done || !pos || !pos.coords) return;
+ done = true;
+ if (watchId !== null) navigator.geolocation.clearWatch(watchId);
  _attendanceLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy || 0 };
  updateAttendanceLocationStatus('Lokasi terbaca. Akurasi sekitar '+Math.round(_attendanceLocation.accuracy)+' meter.', 'ok');
  syncAttendanceSubmitState();
- }, function() {
- updateAttendanceLocationStatus('Gagal membaca lokasi. Izinkan akses lokasi untuk absensi.', 'bad');
- }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 });
+ }
+ function locationErrorMessage(err) {
+ if (err && err.code === 1) return 'Akses lokasi ditolak. Buka izin lokasi Chrome dan pilih Izinkan.';
+ if (err && err.code === 2) return 'Sinyal lokasi belum tersedia. Aktifkan GPS dan coba lagi.';
+ if (err && err.code === 3) return 'GPS terlalu lama merespons. Coba dekat jendela atau matikan-nyalakan lokasi.';
+ return 'Gagal membaca lokasi. Pastikan GPS aktif dan izin lokasi Chrome sudah diizinkan.';
+ }
+ function failLocation(err) {
+ if (!triedFastFallback) {
+ triedFastFallback = true;
+ updateAttendanceLocationStatus('GPS belum stabil, mencoba mode cepat...', '');
+ navigator.geolocation.getCurrentPosition(acceptPosition, failLocation, { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 });
+ return;
+ }
+ if (watchId === null && !done) {
+ updateAttendanceLocationStatus('Menunggu sinyal GPS...', '');
+ watchId = navigator.geolocation.watchPosition(acceptPosition, function(watchErr) {
+ if (!done) updateAttendanceLocationStatus(locationErrorMessage(watchErr), 'bad');
+ }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 });
+ setTimeout(function() {
+ if (!done) {
+ if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+ updateAttendanceLocationStatus(locationErrorMessage(err), 'bad');
+ }
+ }, 15000);
+ return;
+ }
+ updateAttendanceLocationStatus(locationErrorMessage(err), 'bad');
+ }
+ navigator.geolocation.getCurrentPosition(acceptPosition, failLocation, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
 }
 
 function updateAttendanceLocationStatus(text, state) {
