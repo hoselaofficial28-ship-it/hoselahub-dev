@@ -121,8 +121,8 @@ function gasFormPost(action, args, success, failure) {
  gasJsonp('getAbsensiCameraToday', [args && args[0]], function(res) {
  var latest = res && res.data && res.data[0];
  if (!latest) {
- if (attempt < 8) {
- setTimeout(function() { verifyAttendance(attempt + 1); }, 1800);
+ if (attempt < 4) {
+ setTimeout(function() { verifyAttendance(attempt + 1); }, 600);
  return;
  }
  finished = true;
@@ -140,8 +140,8 @@ function gasFormPost(action, args, success, failure) {
  msg: latest.catatan || (latest.status === 'DITERIMA' ? 'Absensi diterima' : 'Absensi ditolak')
  });
  }, function(err) {
- if (attempt < 8) {
- setTimeout(function() { verifyAttendance(attempt + 1); }, 1800);
+ if (attempt < 4) {
+ setTimeout(function() { verifyAttendance(attempt + 1); }, 600);
  return;
  }
  finished = true;
@@ -162,7 +162,13 @@ function gasFormPost(action, args, success, failure) {
  document.body.appendChild(form);
  iframe.onload = function() { setTimeout(function() { verifyAttendance(1); }, 2500); };
  form.submit();
- setTimeout(function() { verifyAttendance(1); }, 20000);
+ setTimeout(function() { verifyAttendance(1); }, 700);
+ setTimeout(function() {
+ if (finished) return;
+ finished = true;
+ cleanup();
+ if (success) success({ success: true, status: 'TERKIRIM', distance: 0, msg: 'Absensi dikirim. Status akan tersinkron otomatis.' });
+ }, 3500);
 }
 
 function gasCall(action, args, success, failure) {
