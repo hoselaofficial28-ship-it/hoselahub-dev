@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511q';
+var APP_VERSION = '20260511r';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1965,9 +1965,12 @@ function submitAttendanceCamera() {
  return;
  }
  updateAttendanceLocationStatus('Absensi diterima. Jarak kantor: '+Math.round(res.distance || 0)+' meter.', 'ok');
- showToast('Absensi berhasil dikirim');
+ var bulanKey = attendanceMonthKey(new Date());
+ clearAttendanceMatrixCache(currentUser.id, bulanKey);
+ showToast('Absensi diterima. Catatan kehadiran diperbarui.');
  _attendancePhotoData = '';
  loadAttendanceToday();
+ refreshAttendanceMatrixIfOpen(currentUser.id, bulanKey);
  }
  if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; }
  gasCall('submitAbsensiCamera', [currentUser.id, currentUser.nama, tipe, _attendancePhotoData, _attendanceLocation.lat, _attendanceLocation.lng, _attendanceLocation.accuracy, new Date().toISOString()], function(res) {
@@ -2131,6 +2134,26 @@ function loadRekapBulanan() {
 var _attendanceMatrixCache = {};
 var _attendanceMatrixCanEdit = false;
 
+function attendanceMonthKey(dateObj) {
+ dateObj = dateObj || new Date();
+ return dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0');
+}
+
+function clearAttendanceMatrixCache(userId, bulanKey) {
+ bulanKey = bulanKey || attendanceMonthKey(new Date());
+ Object.keys(_attendanceMatrixCache).forEach(function(key) {
+ if (key === 'all:' + bulanKey || key === String(userId) + ':' + bulanKey) delete _attendanceMatrixCache[key];
+ });
+ cacheClear('getAbsensiMatrix' + JSON.stringify([bulanKey]));
+ if (userId) cacheClear('getAbsensiMatrixUser' + JSON.stringify([userId, bulanKey]));
+}
+
+function refreshAttendanceMatrixIfOpen(userId, bulanKey) {
+ clearAttendanceMatrixCache(userId, bulanKey);
+ var active = document.querySelector('.screen.active');
+ if (active && active.id === 's-catatan-kehadiran') loadAttendanceMatrix(true);
+}
+
 function fillAttendanceMonthSelect() {
  var sel = document.getElementById('att-matrix-bulan');
  if (!sel || sel.options.length) return;
@@ -2269,7 +2292,8 @@ function saveAttendanceEdit(userId, tanggal) {
  if (!res || !res.success) { showToast(res && res.msg ? res.msg : 'Gagal menyimpan'); return; }
  closeAttendanceEdit();
  var sel = document.getElementById('att-matrix-bulan');
- if (sel) delete _attendanceMatrixCache[sel.value];
+ var bulanKey = sel ? sel.value : tanggal.substring(0, 7);
+ clearAttendanceMatrixCache(userId, bulanKey);
  cacheClear('getAbsensiCameraToday'+JSON.stringify([userId]));
  showToast('Catatan kehadiran disimpan');
  loadAttendanceMatrix(true);
