@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511p';
+var APP_VERSION = '20260511q';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -2194,13 +2194,27 @@ function renderAttendanceMatrix(res) {
  el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>Belum ada data absensi bulan ini</div>';
  return;
  }
+ var monthParts = String(res.bulan || '').split('-');
+ var year = parseInt(monthParts[0], 10);
+ var month = parseInt(monthParts[1], 10);
+ var firstDay = new Date(year, month - 1, 1).getDay();
+ var leadingBlank = (firstDay + 6) % 7; // Monday-first calendar
+ var dayNames = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
  var html = users.map(function(u) {
  var days = '';
+ dayNames.forEach(function(name) {
+ days += '<div class="att-weekday">'+name+'</div>';
+ });
+ for (var b = 0; b < leadingBlank; b++) {
+ days += '<div class="att-day att-blank"></div>';
+ }
  for (var d = 1; d <= res.days; d++) {
  var item = (u.days && u.days[d]) || {};
  var masuk = item.masuk || '';
  var pulang = item.pulang || '';
  var statusClass = item.rejected ? ' rejected' : (item.absen ? ' absent' : (masuk || pulang ? ' filled' : ''));
+ var dateObj = new Date(year, month - 1, d);
+ if (dateObj.getDay() === 0) statusClass += ' sunday';
  var masukText = item.absen && !masuk ? 'A' : (masuk ? masuk.substring(0,5) : '-');
  var click = _attendanceMatrixCanEdit ? ' onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)"' : '';
  days += '<button class="att-day'+statusClass+'"'+click+(_attendanceMatrixCanEdit?'':' type="button"')+'>'+
