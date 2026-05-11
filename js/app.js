@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511u';
+var APP_VERSION = '20260511v';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1070,13 +1070,50 @@ function renderHomeMenuSections(menus) {
  if (!groups[cat]) groups[cat] = [];
  groups[cat].push(m);
  });
- return order.filter(function(cat){ return groups[cat] && groups[cat].length; }).map(function(cat) {
- return '<section class="home-menu-section">'+
- '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc[cat]+'</p></div></div>'+
- '<div class="home-menu-grid">'+groups[cat].map(function(m) {
- return '<div class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon" style="background:'+m.bg+'">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></div>';
+ window._homeMenuGroups = groups;
+ window._homeMenuOrder = order.filter(function(cat){ return groups[cat] && groups[cat].length; });
+ window._homeMenuDesc = desc;
+ return renderHomeCategoryIndex();
+}
+
+function homeCategoryIcon(cat) {
+ if (cat === 'Kehadiran & Personal') return 'camera';
+ if (cat === 'Kerja & Produktivitas') return 'clipboard';
+ if (cat === 'Komunikasi Tim') return 'megaphone';
+ if (cat === 'Finance & Owner') return 'card';
+ return 'user';
+}
+
+function renderHomeCategoryIndex() {
+ var order = window._homeMenuOrder || [];
+ var desc = window._homeMenuDesc || {};
+ return '<section class="home-menu-section home-category-section">'+
+ '<div class="home-section-head"><span></span><div><h2>Kategori Menu</h2><p>Pilih area kerja yang ingin dibuka</p></div></div>'+
+ '<div class="home-category-grid">'+order.map(function(cat) {
+ var count = ((window._homeMenuGroups || {})[cat] || []).length;
+ return '<button class="home-category-card" onclick="openHomeCategory(&quot;'+cat+'&quot;)">'+
+ '<div class="home-category-icon">'+uiIcon(homeCategoryIcon(cat))+'</div>'+
+ '<b>'+cat+'</b><small>'+desc[cat]+'</small><em>'+count+' menu</em></button>';
  }).join('')+'</div></section>';
- }).join('');
+}
+
+function openHomeCategory(cat) {
+ var groups = window._homeMenuGroups || {};
+ var menus = groups[cat] || [];
+ var desc = (window._homeMenuDesc || {})[cat] || '';
+ var el = document.getElementById('home-menu');
+ if (!el) return;
+ el.innerHTML = '<section class="home-menu-section home-menu-detail">'+
+ '<button class="home-category-back" onclick="closeHomeCategory()">Kembali ke kategori</button>'+
+ '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc+'</p></div></div>'+
+ '<div class="home-menu-grid">'+menus.map(function(m) {
+ return '<div class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></div>';
+ }).join('')+'</div></section>';
+}
+
+function closeHomeCategory() {
+ var el = document.getElementById('home-menu');
+ if (el) el.innerHTML = renderHomeCategoryIndex();
 }
 
 function showBulanPicker() {
@@ -2304,29 +2341,34 @@ function renderAttendanceMatrix(res) {
  var masuk = item.masuk || '';
  var pulang = item.pulang || '';
  var statusClass = '';
- var statusLabel = '-';
+ var statusSymbol = '•';
+ var statusTitle = 'Belum ada data';
  if (item.rejected) {
  statusClass = ' rejected';
- statusLabel = 'Ditolak';
+ statusSymbol = '×';
+ statusTitle = 'Ditolak';
  } else if (item.absen) {
  statusClass = ' absent';
- statusLabel = 'Absen';
+ statusSymbol = 'A';
+ statusTitle = 'Absen';
  } else if (masuk && pulang) {
  statusClass = item.telat ? ' filled late' : ' filled complete';
- statusLabel = item.telat ? 'Telat' : 'Lengkap';
+ statusSymbol = item.telat ? '!' : '✓';
+ statusTitle = item.telat ? 'Telat' : 'Lengkap';
  } else if (masuk) {
  statusClass = ' filled partial';
- statusLabel = 'Belum pulang';
+ statusSymbol = '…';
+ statusTitle = 'Belum pulang';
  } else if (pulang) {
  statusClass = ' filled partial';
- statusLabel = 'Tanpa masuk';
+ statusSymbol = '?';
+ statusTitle = 'Tanpa masuk';
  }
  var dateObj = new Date(year, month - 1, d);
  if (dateObj.getDay() === 0) statusClass += ' sunday';
- var timeText = (masuk ? masuk.substring(0,5) : '-') + ' / ' + (pulang ? pulang.substring(0,5) : '-');
  var click = _attendanceMatrixCanEdit ? ' onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)"' : '';
- days += '<button class="att-day'+statusClass+'"'+click+(_attendanceMatrixCanEdit?'':' type="button"')+'>'+
- '<span>'+d+'</span><small>'+timeText+'</small><em>'+statusLabel+'</em></button>';
+ days += '<button class="att-day'+statusClass+'" title="'+statusTitle+'"'+click+(_attendanceMatrixCanEdit?'':' type="button"')+'>'+
+ '<span>'+d+'</span><small>'+(masuk ? masuk.substring(0,5) : '-')+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small><em>'+statusSymbol+'</em></button>';
  }
  return '<div class="card att-user-card" data-search="'+(u.nama+' '+u.bagian+' '+u.jabatan).toLowerCase()+'">'+
  '<div class="att-user-head"><div><b>'+u.nama+'</b><p>'+u.jabatan+' · '+u.bagian+'</p></div><span>'+u.id+'</span></div>'+
