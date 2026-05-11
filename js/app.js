@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260512a';
+var APP_VERSION = '20260512b';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1073,7 +1073,7 @@ function renderHomeMenuSections(menus) {
  window._homeMenuGroups = groups;
  window._homeMenuOrder = order.filter(function(cat){ return groups[cat] && groups[cat].length; });
  window._homeMenuDesc = desc;
- return renderHomeMenuSectionList();
+ return renderHomeCategoryIndex();
 }
 
 function homeCategoryIcon(cat) {
@@ -1134,16 +1134,26 @@ function openHomeCategory(cat) {
  var el = document.getElementById('home-menu');
  if (!el) return;
  el.innerHTML = '<section class="home-menu-section home-menu-detail">'+
- '<button class="home-category-back" onclick="closeHomeCategory()">Kembali ke kategori</button>'+
+ '<button class="home-category-back" onclick="closeHomeCategory()">'+uiIcon('home')+' Kembali ke kategori</button>'+
  '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc+'</p></div></div>'+
  '<div class="home-menu-grid">'+menus.map(function(m) {
- return '<div class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></div>';
+ return '<button class="menu-card" onclick="goTo(\''+m.id+'\')"><div class="menu-icon">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></button>';
  }).join('')+'</div></section>';
 }
 
 function closeHomeCategory() {
  var el = document.getElementById('home-menu');
  if (el) el.innerHTML = renderHomeCategoryIndex();
+}
+
+function refreshHomeData() {
+ if (!currentUser) return;
+ var btn = document.querySelector('.home-refresh-btn');
+ if (btn) btn.classList.add('loading');
+ cacheClear('getHomeData' + JSON.stringify([currentUser.id, currentUser.bagian]));
+ loadHome();
+ setTimeout(function(){ if (btn) btn.classList.remove('loading'); }, 900);
+ showToast('Data diperbarui');
 }
 
 function showBulanPicker() {
@@ -2517,36 +2527,4 @@ window.onload = function() {
  }
  }, 450);
 
- // Pull-to-refresh
- var _pullStart = 0, _pulling = false;
- document.addEventListener('touchstart', function(e) {
- var active = document.querySelector('.screen.active');
- if (!active) return;
- var content = active.querySelector('.content');
- if (content && content.scrollTop === 0) _pullStart = e.touches[0].clientY;
- }, { passive: true });
- document.addEventListener('touchend', function(e) {
- if (!_pullStart) return;
- var diff = e.changedTouches[0].clientY - _pullStart;
- if (diff > 80 && !_pulling) {
- _pulling = true;
- showToast(' Memperbarui...');
- setTimeout(function() {
- var active = document.querySelector('.screen.active');
- if (active) {
- var id = active.id;
- // Reload halaman aktif
- if (id === 's-home') loadHome();
- else if (id === 's-notifikasi') loadNotifikasi();
- else if (id === 's-kelola-izin') loadKelolaIzin();
- else if (id === 's-papan-peringkat') loadPapanPeringkat();
- else if (id === 's-pengumuman') loadPengumuman();
- else if (id === 's-izin') loadIzin();
- else if (id === 's-peraturan') loadPeraturan();
- }
- _pulling = false;
- _pullStart = 0;
- }, 500);
- } else { _pullStart = 0; }
- }, { passive: true });
 };
