@@ -1,4 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
+var APP_VERSION = '20260511i';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -49,6 +50,28 @@ var _cache = {};
 var _cacheExpiry = {};
 var CACHE_TTL = 60000; // 1 menit
 var CAMERA_UNMIRROR = true;
+
+function ensureFreshRuntime() {
+ try {
+ var key = 'hh_app_version';
+ var current = localStorage.getItem(key);
+ if (current === APP_VERSION) return;
+ localStorage.setItem(key, APP_VERSION);
+ Object.keys(localStorage).forEach(function(k) {
+ if (k.indexOf('hh_') === 0 && k !== key && k !== 'hh_username') localStorage.removeItem(k);
+ });
+ if (window.caches && caches.keys) {
+ caches.keys().then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); });
+ }
+ if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+ navigator.serviceWorker.getRegistrations().then(function(regs) { regs.forEach(function(r) { r.unregister(); }); });
+ }
+ if (location.hostname.indexOf('github.io') !== -1 && location.search.indexOf('v=' + APP_VERSION) === -1) {
+ location.replace(location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now());
+ }
+ } catch(e) {}
+}
+ensureFreshRuntime();
 
 function cacheGet(key) {
  if (_cache[key] && _cacheExpiry[key] > Date.now()) return _cache[key];
@@ -172,6 +195,14 @@ function gasFormPost(action, args, success, failure) {
 }
 
 function gasCall(action, args, success, failure) {
+ function retryableFailure(err, attempt, run) {
+ if (attempt < 3) {
+ setTimeout(function(){ run(attempt + 1); }, attempt * 900);
+ return true;
+ }
+ if (failure) failure(err);
+ return true;
+ }
  var cacheKey = action + JSON.stringify(args || []);
  // Cek cache dulu
  if (CACHEABLE.indexOf(action) !== -1) {
@@ -201,10 +232,15 @@ function gasCall(action, args, success, failure) {
  gasFormPost(action, args, success, failure || function(err){ console.error('GAS Error:', err); });
  return;
  }
+ var runJsonp = function(attempt) {
  gasJsonp(action, args, function(data) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
  if (success) success(data);
- }, failure || function(err){ console.error('GAS Error:', err); });
+ }, function(err) {
+ retryableFailure(err, attempt || 1, runJsonp);
+ });
+ };
+ runJsonp(1);
  return;
  }
  // Tambah timestamp untuk bust browser cache pada action non-cacheable
