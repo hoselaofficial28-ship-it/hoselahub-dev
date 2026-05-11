@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511m';
+var APP_VERSION = '20260511n';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -72,6 +72,18 @@ function ensureFreshRuntime() {
  } catch(e) {}
 }
 ensureFreshRuntime();
+
+window.addEventListener('error', function(e) {
+ console.error('App runtime error:', e.error || e.message);
+ var loading = document.getElementById('loading');
+ if (loading) loading.style.display = 'none';
+ var active = document.querySelector('.screen.active');
+ if (!active) {
+ var login = document.getElementById('s-login');
+ if (login) login.classList.add('active');
+ }
+ try { showToast('Terjadi error tampilan. Coba buka ulang menu.'); } catch(err) {}
+});
 
 function cacheGet(key) {
  if (_cache[key] && _cacheExpiry[key] > Date.now()) return _cache[key];
@@ -304,6 +316,7 @@ function goTo(id) {
  gasCall('tandaiMenuDibaca', [currentUser.id, id], function(){});
  }
  }
+ try {
  if (id === 's-pengumuman') loadPengumuman();
  if (id === 's-ide') loadIde();
  if (id === 's-jobdesk') loadJobdeskList();
@@ -314,14 +327,19 @@ function goTo(id) {
  if (id === 's-kpi-check') loadKPICheck();
  if (id === 's-papan-peringkat') loadPapanPeringkat();
  if (id === 's-notifikasi') loadNotifikasi();
-  if (id === 's-izin') loadIzin();
-  if (id === 's-absensi-camera') loadAbsensiCamera();
+ if (id === 's-izin') loadIzin();
+ if (id === 's-absensi-camera') loadAbsensiCamera();
  if (id === 's-sanksi-manual') loadSanksiManual();
  if (id === 's-rekap-bulanan') loadRekapBulanan();
  if (id === 's-catatan-kehadiran') loadAttendanceMatrix();
  if (id === 's-payroll') loadPayroll();
  if (id === 's-slip-gaji') loadSlipGaji();
  if (id === 's-kelola-izin') { loadKelolaIzin(); }
+ if (id === 's-home') loadHome();
+ } catch(routeErr) {
+ console.error('Route error:', id, routeErr);
+ showToast('Menu gagal dibuka. Coba lagi.');
+ }
 }
 
 // Handle browser back button / swipe back
@@ -1290,7 +1308,6 @@ function submitKPI() {
  if (r.success) {
  showToast('KPI berhasil dikirim! ');
  cacheClear('getHomeData'+JSON.stringify([currentUser.id, currentUser.bagian]));
- loadHome();
  goTo('s-home');
  } else {
  btn.textContent = ' Kirim Laporan KPI';
@@ -1381,7 +1398,7 @@ function submitPaksaGantiPIN() {
  showToast('PIN berhasil dibuat! Selamat datang ');
  _navHistory = [];
  history.replaceState({ screen: 's-home' }, '', '#home');
- loadHome(); goTo('s-home');
+ goTo('s-home');
  } else { showToast('Gagal menyimpan PIN. Coba lagi.'); }
  }, function(){
  btn.textContent = 'Simpan & Masuk'; btn.disabled = false;
@@ -2149,7 +2166,9 @@ function loadAttendanceMatrix(force) {
  el.innerHTML = skelCards(5);
  gasCall('getAbsensiMatrix', [bulanKey], function(res) {
  if (!res || !res.success) {
- el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>'+(res && res.msg ? res.msg : 'Gagal memuat catatan kehadiran')+'</div>';
+ var msg = res && (res.msg || res.error) ? (res.msg || res.error) : 'Gagal memuat catatan kehadiran';
+ if (msg.indexOf('Unknown action') !== -1) msg = 'Endpoint Catatan Kehadiran belum ada di GAS. Paste dan deploy Code.gs terbaru dulu.';
+ el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>'+msg+'</div>';
  return;
  }
  _attendanceMatrixCache[bulanKey] = res;
