@@ -805,10 +805,30 @@ body{overflow:hidden}
   right:0;
   bottom:0;
   z-index:2000;
-  min-height:76px;
+  min-height:62px;
+  padding:5px 10px 7px;
+  align-items:center;
 }
-.content{padding-bottom:124px}
-#s-home .content{padding-bottom:132px}
+.screen.active>.navbar .nav-item{
+  min-width:62px;
+  padding:5px 7px;
+  gap:1px;
+  border-radius:10px;
+}
+.screen.active>.navbar .nav-icon{
+  width:22px;
+  height:22px;
+}
+.screen.active>.navbar .nav-icon:empty::before{
+  width:19px;
+  height:19px;
+}
+.screen.active>.navbar .nav-label{
+  font-size:9px;
+  line-height:1.1;
+}
+.content{padding-bottom:98px}
+#s-home .content{padding-bottom:104px}
 .home-menu-detail .menu-icon,
 #home-menu .home-category-icon{
   color:#fff!important;
