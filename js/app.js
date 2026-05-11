@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511s';
+var APP_VERSION = '20260511t';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -2230,7 +2230,8 @@ function renderAttendanceMatrix(res) {
  '<div class="attendance-summary-grid">'+
  '<div class="card"><b>'+users.length+'</b><span>Karyawan</span></div>'+
  '<div class="card"><b>'+((res.totalMasuk||0)+(res.totalPulang||0))+'</b><span>Total Tap</span></div>'+
- '</div>';
+ '</div>'+
+ (_attendanceMatrixCanEdit ? '<button class="btn btn-primary attendance-process-btn" onclick="processAttendanceAppRecap()">Proses ke Rekap Resmi</button>' : '');
  }
  if (!users.length) {
  el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>Belum ada data absensi bulan ini</div>';
@@ -2318,6 +2319,26 @@ function saveAttendanceEdit(userId, tanggal) {
  loadAttendanceMatrix(true);
  }, function() {
  showToast('Koneksi gagal saat menyimpan');
+ });
+}
+
+function processAttendanceAppRecap() {
+ if (!currentUser || (currentUser.bagian !== 'Owner' && currentUser.bagian !== 'Finance')) return;
+ var sel = document.getElementById('att-matrix-bulan');
+ var bulanKey = sel ? sel.value : attendanceMonthKey(new Date());
+ if (!confirm('Proses absensi kamera bulan '+bulanKey+' ke rekap resmi? Data [APP_SYNC] bulan ini akan dibuat ulang.')) return;
+ var btn = document.querySelector('.attendance-process-btn');
+ if (btn) { btn.textContent = 'Memproses...'; btn.disabled = true; }
+ gasCall('processAbsensiAppToRekap', [bulanKey, currentUser.nama], function(res) {
+ if (btn) { btn.textContent = 'Proses ke Rekap Resmi'; btn.disabled = false; }
+ if (!res || !res.success) { showToast((res && res.msg) || 'Gagal proses rekap'); return; }
+ clearAttendanceMatrixCache(null, bulanKey);
+ cacheClear('getRekapBulananSemua' + JSON.stringify([bulanKey]));
+ showToast('Rekap resmi diperbarui: '+(res.rekapRows || 0)+' minggu');
+ loadAttendanceMatrix(true);
+ }, function() {
+ if (btn) { btn.textContent = 'Proses ke Rekap Resmi'; btn.disabled = false; }
+ showToast('Koneksi gagal saat proses rekap');
  });
 }
 
