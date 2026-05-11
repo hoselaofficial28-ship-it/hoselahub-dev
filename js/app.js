@@ -139,7 +139,15 @@ function gasFormPost(action, args, success, failure) {
  radius: latest.radius || 0,
  msg: latest.catatan || (latest.status === 'DITERIMA' ? 'Absensi diterima' : 'Absensi ditolak')
  });
- }, failure);
+ }, function(err) {
+ if (attempt < 8) {
+ setTimeout(function() { verifyAttendance(attempt + 1); }, 1800);
+ return;
+ }
+ finished = true;
+ cleanup();
+ if (failure) failure(err);
+ });
  }
 
  iframe.name = iframeName;
@@ -1883,10 +1891,14 @@ function submitAttendanceCamera() {
  return;
  }
  if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
- showToast('Koneksi gagal');
+ updateAttendanceLocationStatus('Absensi dikirim. Status belum tersinkron, tarik layar untuk memuat ulang.', '');
+ showToast('Absensi sedang diproses');
+ loadAttendanceToday();
  }, function() {
  if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
- showToast('Koneksi gagal');
+ updateAttendanceLocationStatus('Absensi dikirim. Status belum tersinkron, tarik layar untuk memuat ulang.', '');
+ showToast('Absensi sedang diproses');
+ loadAttendanceToday();
  });
  });
 }
