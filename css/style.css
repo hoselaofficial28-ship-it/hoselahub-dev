@@ -809,6 +809,15 @@ body{overflow:hidden}
 }
 .content{padding-bottom:124px}
 #s-home .content{padding-bottom:132px}
+.home-menu-detail .menu-icon,
+#home-menu .home-category-icon{
+  color:#fff!important;
+}
+.home-menu-detail .menu-icon .svg-icon,
+#home-menu .home-category-icon .svg-icon{
+  color:#fff!important;
+  stroke:#fff!important;
+}
 @media (min-width:700px){
   body:not(.phone-mode) #app-wrap{max-width:460px;margin:0 auto;min-height:100vh;box-shadow:0 0 0 1px rgba(16,24,40,.06)}
 }
