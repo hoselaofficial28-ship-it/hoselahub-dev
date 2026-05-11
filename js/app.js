@@ -48,6 +48,7 @@ function uiIcon(name, cls) {
 var _cache = {};
 var _cacheExpiry = {};
 var CACHE_TTL = 60000; // 1 menit
+var CAMERA_UNMIRROR = true;
 
 function cacheGet(key) {
  if (_cache[key] && _cacheExpiry[key] > Date.now()) return _cache[key];
@@ -95,6 +96,60 @@ function gasJsonp(action, args, success, failure) {
  }, 20000);
 }
 
+function gasFormPost(action, args, success, failure) {
+ var iframeName = 'hh_post_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+ var iframe = document.createElement('iframe');
+ var form = document.createElement('form');
+ var finished = false;
+
+ function addField(name, value) {
+ var input = document.createElement('input');
+ input.type = 'hidden';
+ input.name = name;
+ input.value = value;
+ form.appendChild(input);
+ }
+ function cleanup() {
+ setTimeout(function() {
+ if (form.parentNode) form.parentNode.removeChild(form);
+ if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+ }, 800);
+ }
+ function verifyAttendance() {
+ if (finished) return;
+ finished = true;
+ cleanup();
+ gasJsonp('getAbsensiCameraToday', [args && args[0]], function(res) {
+ var latest = res && res.data && res.data[0];
+ if (!latest) {
+ if (failure) failure(new Error('Absensi belum tercatat'));
+ return;
+ }
+ if (success) success({
+ success: latest.status === 'DITERIMA',
+ status: latest.status,
+ distance: latest.distance || latest.jarak || 0,
+ radius: latest.radius || 0,
+ msg: latest.catatan || (latest.status === 'DITERIMA' ? 'Absensi diterima' : 'Absensi ditolak')
+ });
+ }, failure);
+ }
+
+ iframe.name = iframeName;
+ iframe.style.display = 'none';
+ form.method = 'POST';
+ form.action = GAS_URL;
+ form.target = iframeName;
+ form.style.display = 'none';
+ addField('action', action);
+ addField('args', JSON.stringify(args || []));
+ document.body.appendChild(iframe);
+ document.body.appendChild(form);
+ iframe.onload = function() { setTimeout(verifyAttendance, 1200); };
+ form.submit();
+ setTimeout(verifyAttendance, 9000);
+}
+
 function gasCall(action, args, success, failure) {
  var cacheKey = action + JSON.stringify(args || []);
  // Cek cache dulu
@@ -121,6 +176,10 @@ function gasCall(action, args, success, failure) {
  return;
  }
  if (location.hostname.indexOf('github.io') !== -1) {
+ if (action === 'submitAbsensiCamera') {
+ gasFormPost(action, args, success, failure || function(err){ console.error('GAS Error:', err); });
+ return;
+ }
  gasJsonp(action, args, function(data) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
  if (success) success(data);
@@ -1755,7 +1814,14 @@ function captureAttendancePhoto() {
  var scale = Math.min(1, 900 / video.videoWidth);
  canvas.width = Math.round(video.videoWidth * scale);
  canvas.height = Math.round(video.videoHeight * scale);
- canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+ var ctx = canvas.getContext('2d');
+ ctx.save();
+ if (CAMERA_UNMIRROR) {
+ ctx.translate(canvas.width, 0);
+ ctx.scale(-1, 1);
+ }
+ ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+ ctx.restore();
  _attendancePhotoData = canvas.toDataURL('image/jpeg', 0.72);
  if (img) { img.src = _attendancePhotoData; img.style.display = 'block'; }
  video.style.display = 'none';
@@ -1960,7 +2026,7 @@ window.onload = function() {
  document.getElementById('login-username').value = savedUsername;
  document.getElementById('login-password').focus();
  }
- }, 1800);
+ }, 450);
 
  // Pull-to-refresh
  var _pullStart = 0, _pulling = false;
