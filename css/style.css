@@ -753,6 +753,62 @@ body{overflow:hidden}
   gap:8px;
 }
 .home-category-back .svg-icon{width:16px;height:16px}
+
+/* Fix home menu container after two-level menu: full width, not inherited old menu-grid */
+#home-menu.menu-grid{
+  display:block;
+  margin-bottom:0;
+}
+#home-menu .home-menu-section{
+  width:100%;
+}
+#home-menu .home-category-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+#home-menu .home-category-card{
+  display:flex;
+  aspect-ratio:1/1;
+  width:100%;
+  min-width:0;
+  min-height:0;
+  padding:8px 6px;
+  border-radius:16px;
+  gap:6px;
+}
+#home-menu .home-category-icon{
+  width:38px;
+  height:38px;
+  border-radius:14px;
+}
+#home-menu .home-category-card b{
+  font-size:10px;
+  line-height:1.15;
+  max-width:100%;
+}
+#home-menu .home-category-card small{
+  display:none;
+}
+#home-menu .home-category-card em{
+  font-size:9px;
+  padding:2px 6px;
+}
+#home-menu .home-menu-detail .home-menu-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.screen.active>.navbar{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  z-index:2000;
+  min-height:76px;
+}
+.content{padding-bottom:124px}
+#s-home .content{padding-bottom:132px}
 @media (min-width:700px){
   body:not(.phone-mode) #app-wrap{max-width:460px;margin:0 auto;min-height:100vh;box-shadow:0 0 0 1px rgba(16,24,40,.06)}
 }
