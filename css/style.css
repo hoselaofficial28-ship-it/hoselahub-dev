@@ -404,7 +404,6 @@ select.form-input{background-image:linear-gradient(45deg,transparent 50%,#667085
 .home-menu-btn:active{background:rgba(255,255,255,.22);transform:scale(.98)}
 #home-quote{max-width:88%;font-size:12px!important;color:rgba(255,255,255,.78)!important;margin-top:10px!important}
 .ann-banner span:last-child,#anomali-banner span:last-child{display:none}
-#finance-notif{background:#fff7ed;border-color:#fed7aa;box-shadow:var(--shadow-sm)}
 #anomali-banner{background:#b42318!important;border:1px solid #fecdca;border-radius:8px!important;box-shadow:0 12px 22px rgba(180,35,24,.18)}
 #anomali-banner span:first-child{display:none}
 .navbar{padding:8px 12px 12px;background:rgba(255,255,255,.94);border-top:1px solid #d8e1ee;box-shadow:0 -10px 24px rgba(16,24,40,.05)}
@@ -530,6 +529,28 @@ textarea.form-input{line-height:1.45}
 #s-login #username-group [onclick="gantiAkun()"]{
   color:#1557d8!important;
 }
+
+.attendance-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.attendance-summary-grid .card{margin:0;padding:12px;text-align:center}
+.attendance-summary-grid b{display:block;font-size:20px;color:#1557d8}
+.attendance-summary-grid span{font-size:11px;color:var(--text-muted)}
+.att-user-card{padding:12px;margin-bottom:12px}
+.att-user-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
+.att-user-head b{font-size:14px;color:#101828}
+.att-user-head p{font-size:11px;color:var(--text-muted);margin-top:2px}
+.att-user-head span{font-size:10px;font-weight:800;color:#1557d8;background:#eef5ff;border-radius:6px;padding:4px 7px}
+.att-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.att-day{min-height:58px;border:1px solid #e4e9f2;background:#fff;border-radius:8px;padding:5px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-family:inherit;color:#667085}
+.att-day span{font-size:11px;font-weight:900;color:#1557d8}
+.att-day small{font-size:9px;line-height:1;color:#98a2b3}
+.att-day.filled{background:#f1f7ff;border-color:#b7ccfb}
+.att-day.filled small{color:#101828;font-weight:800}
+.att-day.rejected{background:#fff1f0;border-color:#fecdca}
+.att-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.54);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px}
+.att-modal{width:100%;max-width:430px;background:#fff;border-radius:18px 18px 12px 12px;padding:18px;box-shadow:0 -18px 46px rgba(16,24,40,.22)}
+.att-modal h3{font-size:18px;color:#101828;margin-bottom:3px}
+.att-modal p{font-size:12px;color:var(--text-muted);margin-bottom:14px}
+.att-modal label{display:block;font-size:12px;font-weight:850;color:#344054;margin:10px 0 6px}
 .camera-preview{position:relative;aspect-ratio:3/4;background:#101828;border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-size:13px;font-weight:800}
 .camera-preview video,.camera-preview img{width:100%;height:100%;object-fit:cover;display:block}
 .camera-preview video{transform:scaleX(-1)}

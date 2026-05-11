@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511l';
+var APP_VERSION = '20260511m';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -87,7 +87,7 @@ function cacheClear(key) {
 }
 
 // Actions yang boleh di-cache (read-only)
-var CACHEABLE = ['getJobdeskList','getStaffByBagian','getJobdeskByBagian','getJobdeskByJabatan','getUserKPI','getKalenderLibur','getAllUsers'];
+var CACHEABLE = ['getJobdeskList','getStaffByBagian','getJobdeskByBagian','getJobdeskByJabatan','getUserKPI','getKalenderLibur','getAllUsers','getPengumuman','getIde','getAbsensiRekap','getRekapBulananSemua','getPayrollPreview'];
 
 function gasJsonp(action, args, success, failure) {
  var cbName = 'hh_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
@@ -316,8 +316,9 @@ function goTo(id) {
  if (id === 's-notifikasi') loadNotifikasi();
   if (id === 's-izin') loadIzin();
   if (id === 's-absensi-camera') loadAbsensiCamera();
-  if (id === 's-sanksi-manual') loadSanksiManual();
+ if (id === 's-sanksi-manual') loadSanksiManual();
  if (id === 's-rekap-bulanan') loadRekapBulanan();
+ if (id === 's-catatan-kehadiran') loadAttendanceMatrix();
  if (id === 's-payroll') loadPayroll();
  if (id === 's-slip-gaji') loadSlipGaji();
  if (id === 's-kelola-izin') { loadKelolaIzin(); }
@@ -375,7 +376,7 @@ function doLogin() {
  }
  _navHistory = [];
  history.replaceState({ screen: 's-home' }, '', '#home');
- loadHome(); goTo('s-home');
+ goTo('s-home');
  } else {
  errEl.textContent = 'Nama pengguna atau kata sandi salah.';
  document.getElementById('login-password').value = '';
@@ -449,10 +450,10 @@ function loadHome() {
  if (u.bagian === 'Owner' || u.bagian === 'Finance')
  menus.push({id:'s-kalender', icon:'calendar', bg:'#fee2e2', label:'Kalender Libur', sub:'Atur hari libur'});
  if (u.bagian === 'Finance') {
- menus.push({id:'s-absensi-upload', icon:'upload', bg:'#e0f2fe', label:'Upload Absensi', sub:'Data fingerprint'});
  menus.push({id:'s-kelola-izin', icon:'check', bg:'#d1fae5', label:'Kelola Izin', sub:'Approve pengajuan'});
  menus.push({id:'s-kpi-check', icon:'clipboard', bg:'#fef3c7', label:'KPI Checklist', sub:'Update KPI kamu'});
  menus.push({id:'s-sanksi-manual', icon:'scale', bg:'#fce7f3', label:'Reward & Penalty', sub:'Denda & reward manual'});
+ menus.push({id:'s-catatan-kehadiran', icon:'calendar', bg:'#e8f0ff', label:'Catatan Kehadiran', sub:'Baca & edit absensi'});
  menus.push({id:'s-rekap-bulanan', icon:'chart', bg:'#e0f2fe', label:'Rekap Bulanan', sub:'Ringkasan semua karyawan'});
  menus.push({id:'s-payroll', icon:'card', bg:'#ede9fe', label:'Payroll', sub:'Preview & publish slip'});
  }
@@ -461,6 +462,7 @@ function loadHome() {
  menus.push({id:'s-manage-users', icon:'users', bg:'#fef3c7', label:'Kelola Tim', sub:'Aktif / Nonaktif'});
  menus.push({id:'s-laporan-absensi', icon:'chart', bg:'#e0f2fe', label:'Laporan Absensi', sub:'Rekap kehadiran'});
  menus.push({id:'s-sanksi-manual', icon:'scale', bg:'#fce7f3', label:'Reward & Penalty', sub:'Denda & reward manual'});
+ menus.push({id:'s-catatan-kehadiran', icon:'calendar', bg:'#e8f0ff', label:'Catatan Kehadiran', sub:'Baca & edit absensi'});
  menus.push({id:'s-rekap-bulanan', icon:'chart', bg:'#d1fae5', label:'Rekap Bulanan', sub:'Ringkasan semua karyawan'});
  menus.push({id:'s-payroll', icon:'card', bg:'#ede9fe', label:'Payroll', sub:'Review gaji tim'});
  }
@@ -573,7 +575,8 @@ function loadHome() {
  '</div></div>';
  }
 
- if (d.needsAbsensiUpdate) document.getElementById('finance-notif').style.display = 'block';
+ var financeNotif = document.getElementById('finance-notif');
+ if (financeNotif) financeNotif.style.display = 'none';
 
  // Banner anomali tap
  if (d.anomaliPending && d.anomaliPending.length > 0) {
@@ -1157,7 +1160,8 @@ function prosesAbsensi() {
  resultEl.style.cssText = 'display:block;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px;margin-bottom:10px';
  titleEl.style.color = '#166534'; titleEl.textContent = ' Berhasil!';
  msgEl.style.color = '#166534'; msgEl.textContent = r.msg;
- document.getElementById('finance-notif').style.display = 'none';
+ var oldUploadNotif = document.getElementById('finance-notif');
+ if (oldUploadNotif) oldUploadNotif.style.display = 'none';
  } else {
  resultEl.style.cssText = 'display:block;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;margin-bottom:10px';
  titleEl.style.color = '#c2410c'; titleEl.textContent = ' Gagal';
@@ -2105,6 +2109,136 @@ function loadRekapBulanan() {
  filterOwnerRekap();
  }, function() {
  el.innerHTML = '<div class="empty-state">Gagal memuat data</div>';
+ });
+}
+
+var _attendanceMatrixCache = {};
+
+function fillAttendanceMonthSelect() {
+ var sel = document.getElementById('att-matrix-bulan');
+ if (!sel || sel.options.length) return;
+ var now = new Date();
+ var names = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+ for (var i = 0; i < 6; i++) {
+ var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+ var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+ var opt = document.createElement('option');
+ opt.value = key;
+ opt.textContent = names[d.getMonth()] + ' ' + d.getFullYear();
+ sel.appendChild(opt);
+ }
+}
+
+function loadAttendanceMatrix(force) {
+ if (!currentUser || (currentUser.bagian !== 'Owner' && currentUser.bagian !== 'Finance')) {
+ showToast('Catatan kehadiran hanya untuk Owner dan Finance');
+ goTo('s-home');
+ return;
+ }
+ fillAttendanceMonthSelect();
+ var sel = document.getElementById('att-matrix-bulan');
+ var bulanKey = sel ? sel.value : '';
+ var el = document.getElementById('att-matrix-content');
+ var summary = document.getElementById('att-matrix-summary');
+ if (!el) return;
+ if (summary) summary.innerHTML = '';
+ if (!force && _attendanceMatrixCache[bulanKey]) {
+ renderAttendanceMatrix(_attendanceMatrixCache[bulanKey]);
+ return;
+ }
+ el.innerHTML = skelCards(5);
+ gasCall('getAbsensiMatrix', [bulanKey], function(res) {
+ if (!res || !res.success) {
+ el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>'+(res && res.msg ? res.msg : 'Gagal memuat catatan kehadiran')+'</div>';
+ return;
+ }
+ _attendanceMatrixCache[bulanKey] = res;
+ renderAttendanceMatrix(res);
+ }, function() {
+ el.innerHTML = '<div class="empty-state">Koneksi gagal saat memuat catatan</div>';
+ });
+}
+
+function renderAttendanceMatrix(res) {
+ var el = document.getElementById('att-matrix-content');
+ var summary = document.getElementById('att-matrix-summary');
+ if (!el) return;
+ var users = res.users || [];
+ if (summary) {
+ summary.innerHTML =
+ '<div class="attendance-summary-grid">'+
+ '<div class="card"><b>'+users.length+'</b><span>Karyawan</span></div>'+
+ '<div class="card"><b>'+((res.totalMasuk||0)+(res.totalPulang||0))+'</b><span>Total Tap</span></div>'+
+ '</div>';
+ }
+ if (!users.length) {
+ el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>Belum ada data absensi bulan ini</div>';
+ return;
+ }
+ var html = users.map(function(u) {
+ var days = '';
+ for (var d = 1; d <= res.days; d++) {
+ var item = (u.days && u.days[d]) || {};
+ var masuk = item.masuk || '';
+ var pulang = item.pulang || '';
+ var statusClass = item.rejected ? ' rejected' : (masuk || pulang ? ' filled' : '');
+ days += '<button class="att-day'+statusClass+'" onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)">'+
+ '<span>'+d+'</span><small>'+(masuk ? masuk.substring(0,5) : '-')+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small></button>';
+ }
+ return '<div class="card att-user-card" data-search="'+(u.nama+' '+u.bagian+' '+u.jabatan).toLowerCase()+'">'+
+ '<div class="att-user-head"><div><b>'+u.nama+'</b><p>'+u.jabatan+' · '+u.bagian+'</p></div><span>'+u.id+'</span></div>'+
+ '<div class="att-grid">'+days+'</div>'+
+ '</div>';
+ }).join('');
+ el.innerHTML = html;
+ filterAttendanceMatrix();
+}
+
+function filterAttendanceMatrix() {
+ var input = document.getElementById('att-matrix-search');
+ var q = input ? input.value.toLowerCase().trim() : '';
+ document.querySelectorAll('.att-user-card').forEach(function(card) {
+ card.style.display = !q || (card.getAttribute('data-search') || '').indexOf(q) !== -1 ? 'block' : 'none';
+ });
+}
+
+function openAttendanceEdit(userId, nama, bulanKey, day, masuk, pulang) {
+ var tanggal = bulanKey + '-' + String(day).padStart(2,'0');
+ var html =
+ '<div class="att-modal-backdrop" id="att-edit-modal">'+
+ '<div class="att-modal">'+
+ '<h3>Edit Kehadiran</h3>'+
+ '<p>'+nama+' · '+tanggal+'</p>'+
+ '<label>Jam Masuk</label><input class="form-input" id="att-edit-masuk" type="time" value="'+(masuk ? masuk.substring(0,5) : '')+'">'+
+ '<label>Jam Pulang</label><input class="form-input" id="att-edit-pulang" type="time" value="'+(pulang ? pulang.substring(0,5) : '')+'">'+
+ '<label>Catatan</label><input class="form-input" id="att-edit-note" placeholder="Contoh: koreksi manual Finance">'+
+ '<div style="display:flex;gap:8px;margin-top:14px">'+
+ '<button class="btn" style="background:#eef2f6;color:#344054" onclick="closeAttendanceEdit()">Batal</button>'+
+ '<button class="btn btn-primary" onclick="saveAttendanceEdit(&quot;'+userId+'&quot;,&quot;'+tanggal+'&quot;)">Simpan</button>'+
+ '</div></div></div>';
+ document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function closeAttendanceEdit() {
+ var m = document.getElementById('att-edit-modal');
+ if (m) m.remove();
+}
+
+function saveAttendanceEdit(userId, tanggal) {
+ var masuk = document.getElementById('att-edit-masuk').value;
+ var pulang = document.getElementById('att-edit-pulang').value;
+ var note = document.getElementById('att-edit-note').value || '';
+ if (!masuk && !pulang) { showToast('Isi minimal jam masuk atau pulang'); return; }
+ gasCall('updateAbsensiMatrixDay', [userId, tanggal, masuk, pulang, note, currentUser ? currentUser.nama : ''], function(res) {
+ if (!res || !res.success) { showToast(res && res.msg ? res.msg : 'Gagal menyimpan'); return; }
+ closeAttendanceEdit();
+ var sel = document.getElementById('att-matrix-bulan');
+ if (sel) delete _attendanceMatrixCache[sel.value];
+ cacheClear('getAbsensiCameraToday'+JSON.stringify([userId]));
+ showToast('Catatan kehadiran disimpan');
+ loadAttendanceMatrix(true);
+ }, function() {
+ showToast('Koneksi gagal saat menyimpan');
  });
 }
 
