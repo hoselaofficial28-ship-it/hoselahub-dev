@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511v';
+var APP_VERSION = '20260512a';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1073,7 +1073,7 @@ function renderHomeMenuSections(menus) {
  window._homeMenuGroups = groups;
  window._homeMenuOrder = order.filter(function(cat){ return groups[cat] && groups[cat].length; });
  window._homeMenuDesc = desc;
- return renderHomeCategoryIndex();
+ return renderHomeMenuSectionList();
 }
 
 function homeCategoryIcon(cat) {
@@ -1095,6 +1095,36 @@ function renderHomeCategoryIndex() {
  '<div class="home-category-icon">'+uiIcon(homeCategoryIcon(cat))+'</div>'+
  '<b>'+cat+'</b><small>'+desc[cat]+'</small><em>'+count+' menu</em></button>';
  }).join('')+'</div></section>';
+}
+
+function renderHomeMenuSectionList() {
+ var order = window._homeMenuOrder || [];
+ var desc = window._homeMenuDesc || {};
+ var groups = window._homeMenuGroups || {};
+ var html = '<div class="home-menu-search"><span></span><input id="home-menu-search-input" placeholder="Cari menu..." oninput="filterHomeMenus()"></div>';
+ html += order.map(function(cat) {
+ var menus = groups[cat] || [];
+ return '<section class="home-menu-section" data-menu-section="'+cat.toLowerCase()+'">'+
+ '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc[cat]+'</p></div></div>'+
+ '<div class="home-menu-grid">'+menus.map(function(m) {
+ return '<button class="menu-card" data-menu-search="'+(m.label+' '+m.sub+' '+cat).toLowerCase()+'" onclick="goTo(\''+m.id+'\')"><div class="menu-icon">'+uiIcon(m.icon)+'</div><h3>'+m.label+'</h3><p>'+m.sub+'</p></button>';
+ }).join('')+'</div></section>';
+ }).join('');
+ return html;
+}
+
+function filterHomeMenus() {
+ var input = document.getElementById('home-menu-search-input');
+ var q = input ? input.value.toLowerCase().trim() : '';
+ document.querySelectorAll('.home-menu-section').forEach(function(section) {
+ var visibleCount = 0;
+ section.querySelectorAll('.menu-card').forEach(function(card) {
+ var show = !q || (card.getAttribute('data-menu-search') || '').indexOf(q) !== -1;
+ card.style.display = show ? 'flex' : 'none';
+ if (show) visibleCount++;
+ });
+ section.style.display = visibleCount ? 'block' : 'none';
+ });
 }
 
 function openHomeCategory(cat) {
@@ -2341,23 +2371,27 @@ function renderAttendanceMatrix(res) {
  var masuk = item.masuk || '';
  var pulang = item.pulang || '';
  var statusClass = '';
- var statusSymbol = '•';
+ var statusSymbol = '&middot;';
  var statusTitle = 'Belum ada data';
  if (item.rejected) {
  statusClass = ' rejected';
- statusSymbol = '×';
+ statusSymbol = '&times;';
  statusTitle = 'Ditolak';
  } else if (item.absen) {
  statusClass = ' absent';
  statusSymbol = 'A';
  statusTitle = 'Absen';
+ } else if (item.lembur) {
+ statusClass = ' filled overtime';
+ statusSymbol = '+';
+ statusTitle = 'Lembur';
  } else if (masuk && pulang) {
  statusClass = item.telat ? ' filled late' : ' filled complete';
- statusSymbol = item.telat ? '!' : '✓';
+ statusSymbol = item.telat ? '!' : '&#10003;';
  statusTitle = item.telat ? 'Telat' : 'Lengkap';
  } else if (masuk) {
  statusClass = ' filled partial';
- statusSymbol = '…';
+ statusSymbol = '&hellip;';
  statusTitle = 'Belum pulang';
  } else if (pulang) {
  statusClass = ' filled partial';
