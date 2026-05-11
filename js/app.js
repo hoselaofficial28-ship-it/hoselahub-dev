@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511o';
+var APP_VERSION = '20260511p';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -463,6 +463,7 @@ function loadHome() {
  ];
  menus.push({id:'s-notifikasi', icon:'bell', bg:'#fee2e2', label:'Notifikasi', sub:'Peringatan & info'});
  menus.push({id:'s-absensi-camera', icon:'camera', bg:'#e8f0ff', label:'Absensi Kamera', sub:'Foto & lokasi kantor'});
+ menus.push({id:'s-catatan-kehadiran', icon:'calendar', bg:'#e8f0ff', label:'Catatan Kehadiran', sub:'Riwayat masuk & pulang'});
  menus.push({id:'s-izin', icon:'edit', bg:'#d1fae5', label:'Izin / Sakit', sub:'Ajukan ketidakhadiran'});
  menus.push({id:'s-slip-gaji', icon:'receipt', bg:'#e0f2fe', label:'Slip Gaji', sub:'Riwayat gaji kamu'});
  if (u.bagian === 'Owner' || u.bagian === 'Finance')
@@ -471,7 +472,6 @@ function loadHome() {
  menus.push({id:'s-kelola-izin', icon:'check', bg:'#d1fae5', label:'Kelola Izin', sub:'Approve pengajuan'});
  menus.push({id:'s-kpi-check', icon:'clipboard', bg:'#fef3c7', label:'KPI Checklist', sub:'Update KPI kamu'});
  menus.push({id:'s-sanksi-manual', icon:'scale', bg:'#fce7f3', label:'Reward & Penalty', sub:'Denda & reward manual'});
- menus.push({id:'s-catatan-kehadiran', icon:'calendar', bg:'#e8f0ff', label:'Catatan Kehadiran', sub:'Baca & edit absensi'});
  menus.push({id:'s-rekap-bulanan', icon:'chart', bg:'#e0f2fe', label:'Rekap Bulanan', sub:'Ringkasan semua karyawan'});
  menus.push({id:'s-payroll', icon:'card', bg:'#ede9fe', label:'Payroll', sub:'Preview & publish slip'});
  }
@@ -480,7 +480,6 @@ function loadHome() {
  menus.push({id:'s-manage-users', icon:'users', bg:'#fef3c7', label:'Kelola Tim', sub:'Aktif / Nonaktif'});
  menus.push({id:'s-laporan-absensi', icon:'chart', bg:'#e0f2fe', label:'Laporan Absensi', sub:'Rekap kehadiran'});
  menus.push({id:'s-sanksi-manual', icon:'scale', bg:'#fce7f3', label:'Reward & Penalty', sub:'Denda & reward manual'});
- menus.push({id:'s-catatan-kehadiran', icon:'calendar', bg:'#e8f0ff', label:'Catatan Kehadiran', sub:'Baca & edit absensi'});
  menus.push({id:'s-rekap-bulanan', icon:'chart', bg:'#d1fae5', label:'Rekap Bulanan', sub:'Ringkasan semua karyawan'});
  menus.push({id:'s-payroll', icon:'card', bg:'#ede9fe', label:'Payroll', sub:'Review gaji tim'});
  }
@@ -2130,6 +2129,7 @@ function loadRekapBulanan() {
 }
 
 var _attendanceMatrixCache = {};
+var _attendanceMatrixCanEdit = false;
 
 function fillAttendanceMonthSelect() {
  var sel = document.getElementById('att-matrix-bulan');
@@ -2147,31 +2147,31 @@ function fillAttendanceMonthSelect() {
 }
 
 function loadAttendanceMatrix(force) {
- if (!currentUser || (currentUser.bagian !== 'Owner' && currentUser.bagian !== 'Finance')) {
- showToast('Catatan kehadiran hanya untuk Owner dan Finance');
- goTo('s-home');
- return;
- }
+ if (!currentUser) return;
  fillAttendanceMonthSelect();
  var sel = document.getElementById('att-matrix-bulan');
  var bulanKey = sel ? sel.value : '';
  var el = document.getElementById('att-matrix-content');
  var summary = document.getElementById('att-matrix-summary');
+ _attendanceMatrixCanEdit = currentUser.bagian === 'Owner' || currentUser.bagian === 'Finance';
  if (!el) return;
  if (summary) summary.innerHTML = '';
- if (!force && _attendanceMatrixCache[bulanKey]) {
- renderAttendanceMatrix(_attendanceMatrixCache[bulanKey]);
+ var cacheKey = (_attendanceMatrixCanEdit ? 'all' : currentUser.id) + ':' + bulanKey;
+ if (!force && _attendanceMatrixCache[cacheKey]) {
+ renderAttendanceMatrix(_attendanceMatrixCache[cacheKey]);
  return;
  }
  el.innerHTML = skelCards(5);
- gasCall('getAbsensiMatrix', [bulanKey], function(res) {
+ var action = _attendanceMatrixCanEdit ? 'getAbsensiMatrix' : 'getAbsensiMatrixUser';
+ var args = _attendanceMatrixCanEdit ? [bulanKey] : [currentUser.id, bulanKey];
+ gasCall(action, args, function(res) {
  if (!res || !res.success) {
  var msg = res && (res.msg || res.error) ? (res.msg || res.error) : 'Gagal memuat catatan kehadiran';
  if (msg.indexOf('Unknown action') !== -1) msg = 'Endpoint Catatan Kehadiran belum ada di GAS. Paste dan deploy Code.gs terbaru dulu.';
  el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>'+msg+'</div>';
  return;
  }
- _attendanceMatrixCache[bulanKey] = res;
+ _attendanceMatrixCache[cacheKey] = res;
  renderAttendanceMatrix(res);
  }, function() {
  el.innerHTML = '<div class="empty-state">Koneksi gagal saat memuat catatan</div>';
@@ -2202,7 +2202,8 @@ function renderAttendanceMatrix(res) {
  var pulang = item.pulang || '';
  var statusClass = item.rejected ? ' rejected' : (item.absen ? ' absent' : (masuk || pulang ? ' filled' : ''));
  var masukText = item.absen && !masuk ? 'A' : (masuk ? masuk.substring(0,5) : '-');
- days += '<button class="att-day'+statusClass+'" onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)">'+
+ var click = _attendanceMatrixCanEdit ? ' onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)"' : '';
+ days += '<button class="att-day'+statusClass+'"'+click+(_attendanceMatrixCanEdit?'':' type="button"')+'>'+
  '<span>'+d+'</span><small>'+masukText+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small></button>';
  }
  return '<div class="card att-user-card" data-search="'+(u.nama+' '+u.bagian+' '+u.jabatan).toLowerCase()+'">'+
@@ -2223,6 +2224,7 @@ function filterAttendanceMatrix() {
 }
 
 function openAttendanceEdit(userId, nama, bulanKey, day, masuk, pulang) {
+ if (!_attendanceMatrixCanEdit) return;
  var tanggal = bulanKey + '-' + String(day).padStart(2,'0');
  var html =
  '<div class="att-modal-backdrop" id="att-edit-modal">'+
