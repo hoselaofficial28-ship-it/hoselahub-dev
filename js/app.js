@@ -1846,21 +1846,41 @@ function submitAttendanceCamera() {
  if (!_attendanceLocation) { showToast('Lokasi belum terbaca'); getAttendanceLocation(); return; }
  var btn = document.getElementById('attendance-submit-btn');
  var tipe = document.getElementById('attendance-type').value;
- if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; }
- gasCall('submitAbsensiCamera', [currentUser.id, currentUser.nama, tipe, _attendancePhotoData, _attendanceLocation.lat, _attendanceLocation.lng, _attendanceLocation.accuracy, new Date().toISOString()], function(res) {
+ function finishAttendanceSubmit(res) {
  if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
  if (!res || res.success === false) {
  updateAttendanceLocationStatus((res && res.msg) || 'Absensi ditolak.', 'bad');
  showToast((res && res.msg) || 'Absensi gagal');
+ loadAttendanceToday();
  return;
  }
  updateAttendanceLocationStatus('Absensi diterima. Jarak kantor: '+Math.round(res.distance || 0)+' meter.', 'ok');
  showToast('Absensi berhasil dikirim');
  _attendancePhotoData = '';
  loadAttendanceToday();
+ }
+ if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; }
+ gasCall('submitAbsensiCamera', [currentUser.id, currentUser.nama, tipe, _attendancePhotoData, _attendanceLocation.lat, _attendanceLocation.lng, _attendanceLocation.accuracy, new Date().toISOString()], function(res) {
+ finishAttendanceSubmit(res);
+ }, function() {
+ gasCall('getAbsensiCameraToday', [currentUser.id], function(check) {
+ var latest = check && check.data && check.data[0];
+ if (latest) {
+ finishAttendanceSubmit({
+ success: latest.status === 'DITERIMA',
+ status: latest.status,
+ distance: latest.distance || latest.jarak || 0,
+ radius: latest.radius || 0,
+ msg: latest.catatan || (latest.status === 'DITERIMA' ? 'Absensi diterima' : 'Absensi ditolak')
+ });
+ return;
+ }
+ if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
+ showToast('Koneksi gagal');
  }, function() {
  if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
  showToast('Koneksi gagal');
+ });
  });
 }
 
