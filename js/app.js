@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260511n';
+var APP_VERSION = '20260511o';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -2200,9 +2200,10 @@ function renderAttendanceMatrix(res) {
  var item = (u.days && u.days[d]) || {};
  var masuk = item.masuk || '';
  var pulang = item.pulang || '';
- var statusClass = item.rejected ? ' rejected' : (masuk || pulang ? ' filled' : '');
+ var statusClass = item.rejected ? ' rejected' : (item.absen ? ' absent' : (masuk || pulang ? ' filled' : ''));
+ var masukText = item.absen && !masuk ? 'A' : (masuk ? masuk.substring(0,5) : '-');
  days += '<button class="att-day'+statusClass+'" onclick="openAttendanceEdit(&quot;'+u.id+'&quot;,&quot;'+esc(u.nama)+'&quot;,&quot;'+res.bulan+'&quot;,'+d+',&quot;'+esc(masuk)+'&quot;,&quot;'+esc(pulang)+'&quot;)">'+
- '<span>'+d+'</span><small>'+(masuk ? masuk.substring(0,5) : '-')+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small></button>';
+ '<span>'+d+'</span><small>'+masukText+'</small><small>'+(pulang ? pulang.substring(0,5) : '-')+'</small></button>';
  }
  return '<div class="card att-user-card" data-search="'+(u.nama+' '+u.bagian+' '+u.jabatan).toLowerCase()+'">'+
  '<div class="att-user-head"><div><b>'+u.nama+'</b><p>'+u.jabatan+' · '+u.bagian+'</p></div><span>'+u.id+'</span></div>'+

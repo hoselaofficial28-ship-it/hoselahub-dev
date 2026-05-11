@@ -546,6 +546,8 @@ textarea.form-input{line-height:1.45}
 .att-day.filled{background:#f1f7ff;border-color:#b7ccfb}
 .att-day.filled small{color:#101828;font-weight:800}
 .att-day.rejected{background:#fff1f0;border-color:#fecdca}
+.att-day.absent{background:#fff1f0;border-color:#fecdca}
+.att-day.absent small{color:#b42318;font-weight:900}
 .att-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.54);z-index:10000;display:flex;align-items:flex-end;justify-content:center;padding:14px}
 .att-modal{width:100%;max-width:430px;background:#fff;border-radius:18px 18px 12px 12px;padding:18px;box-shadow:0 -18px 46px rgba(16,24,40,.22)}
 .att-modal h3{font-size:18px;color:#101828;margin-bottom:3px}
