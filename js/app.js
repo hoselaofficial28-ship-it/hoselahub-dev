@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513b';
+var APP_VERSION = '20260513c';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -50,6 +50,9 @@ var _cache = {};
 var _cacheExpiry = {};
 var CACHE_TTL = 60000; // 1 menit
 var CAMERA_UNMIRROR = true;
+var SESSION_TTL = 10 * 24 * 60 * 60 * 1000;
+var _sideMenuOpen = false;
+var _deferredInstallPrompt = null;
 
 function ensureFreshRuntime() {
  try {
@@ -58,13 +61,10 @@ function ensureFreshRuntime() {
  if (current === APP_VERSION) return;
  localStorage.setItem(key, APP_VERSION);
  Object.keys(localStorage).forEach(function(k) {
- if (k.indexOf('hh_') === 0 && k !== key && k !== 'hh_username') localStorage.removeItem(k);
+ if (k.indexOf('hh_') === 0 && k !== key && k !== 'hh_username' && k !== 'hh_session') localStorage.removeItem(k);
  });
  if (window.caches && caches.keys) {
  caches.keys().then(function(keys) { keys.forEach(function(k) { caches.delete(k); }); });
- }
- if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
- navigator.serviceWorker.getRegistrations().then(function(regs) { regs.forEach(function(r) { r.unregister(); }); });
  }
  if (location.hostname.indexOf('github.io') !== -1 && location.search.indexOf('v=' + APP_VERSION) === -1) {
  location.replace(location.pathname + '?v=' + APP_VERSION + '&t=' + Date.now());
@@ -96,6 +96,37 @@ function cacheSet(key, val, ttl) {
 function cacheClear(key) {
  delete _cache[key];
  delete _cacheExpiry[key];
+}
+
+function saveLoginSession(user, username) {
+ try {
+ localStorage.setItem('hh_session', JSON.stringify({
+ user: user,
+ username: username,
+ createdAt: Date.now(),
+ expiresAt: Date.now() + SESSION_TTL
+ }));
+ } catch(e) {}
+}
+
+function getLoginSession() {
+ try {
+ var raw = localStorage.getItem('hh_session');
+ if (!raw) return null;
+ var s = JSON.parse(raw);
+ if (!s || !s.user || !s.expiresAt || Date.now() > s.expiresAt) {
+ localStorage.removeItem('hh_session');
+ return null;
+ }
+ return s;
+ } catch(e) {
+ localStorage.removeItem('hh_session');
+ return null;
+ }
+}
+
+function clearLoginSession() {
+ localStorage.removeItem('hh_session');
 }
 
 // Actions yang boleh di-cache (read-only)
@@ -286,6 +317,31 @@ function warmUpGAS() {
  fetch(GAS_URL + '?action=ping&args=[]', { redirect: 'follow' }).catch(function(){ gasJsonp('ping', [], function(){}, function(){}); });
 }
 
+function setupPWAInstall() {
+ if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+ navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).catch(function(err){ console.warn('Service worker gagal:', err); });
+ }
+ window.addEventListener('beforeinstallprompt', function(e) {
+ e.preventDefault();
+ _deferredInstallPrompt = e;
+ var row = document.getElementById('install-app-row');
+ if (row) row.style.display = 'flex';
+ });
+}
+
+function installApp() {
+ if (!_deferredInstallPrompt) {
+ showToast('Gunakan menu browser lalu pilih Install app / Tambahkan ke layar utama');
+ return;
+ }
+ _deferredInstallPrompt.prompt();
+ _deferredInstallPrompt.userChoice.finally(function() {
+ _deferredInstallPrompt = null;
+ var row = document.getElementById('install-app-row');
+ if (row) row.style.display = 'none';
+ });
+}
+
 // Navigation history stack untuk swipe back
 var _navHistory = [];
 
@@ -344,6 +400,10 @@ function goTo(id) {
 
 // Handle browser back button / swipe back
 window.addEventListener('popstate', function(e) {
+ if (_sideMenuOpen) {
+ closeSideMenu(true);
+ return;
+ }
  if (_navHistory.length > 0) {
  var prev = _navHistory.pop();
  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
@@ -367,6 +427,7 @@ function showPinLoading(loading) {
 
 function gantiAkun() {
  localStorage.removeItem('hh_username');
+ clearLoginSession();
  document.getElementById('login-username').value = '';
  document.getElementById('username-group').style.display = 'block';
  document.getElementById('login-username').focus();
@@ -392,6 +453,7 @@ function doLogin() {
  document.getElementById('s-paksa-ganti-pin').classList.add('active');
  return;
  }
+ saveLoginSession(r.user, username);
  _navHistory = [];
  history.replaceState({ screen: 's-home' }, '', '#home');
  goTo('s-home');
@@ -1826,6 +1888,9 @@ function kirimNotifPeraturan() {
 function openSideMenu() {
  var menu = document.getElementById('side-menu');
  var overlay = document.getElementById('side-menu-overlay');
+ if (_sideMenuOpen) return;
+ _sideMenuOpen = true;
+ try { history.pushState({ sideMenu: true }, '', location.href); } catch(e) {}
  overlay.style.zIndex = '9000';
  menu.style.zIndex = '9001';
  menu.style.display = 'flex';
@@ -1840,9 +1905,15 @@ function openSideMenu() {
  }
 }
 
-function closeSideMenu() {
+function closeSideMenu(fromHistory) {
  var menu = document.getElementById('side-menu');
  var overlay = document.getElementById('side-menu-overlay');
+ if (!_sideMenuOpen && (!menu || menu.style.display === 'none')) return;
+ if (!fromHistory && _sideMenuOpen) {
+ try { history.back(); } catch(e) {}
+ return;
+ }
+ _sideMenuOpen = false;
  menu.style.transform = 'translateX(100%)';
  overlay.style.display = 'none';
  setTimeout(function(){ menu.style.display = 'none'; }, 280);
@@ -1876,6 +1947,7 @@ function doLogout() {
  if (!confirm('Yakin ingin logout?')) return;
  closeSideMenu();
  currentUser = null;
+ clearLoginSession();
  localStorage.removeItem('hh_username');
  goTo('s-login');
  document.getElementById('login-password').value = '';
@@ -2513,9 +2585,19 @@ function showToast(msg) {
 }
 
 window.onload = function() {
+ setupPWAInstall();
  warmUpGAS();
  setTimeout(function() {
  document.getElementById('loading').style.display = 'none';
+ var session = getLoginSession();
+ if (session && session.user) {
+ currentUser = session.user;
+ if (session.username) localStorage.setItem('hh_username', session.username);
+ _navHistory = [];
+ history.replaceState({ screen: 's-home' }, '', '#home');
+ goTo('s-home');
+ return;
+ }
  goTo('s-login');
  var savedUsername = localStorage.getItem('hh_username');
  if (savedUsername) {
