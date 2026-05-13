@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513d';
+var APP_VERSION = '20260513e';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -56,6 +56,20 @@ var _deferredInstallPrompt = null;
 
 function ensureFreshRuntime() {
  try {
+ if (location.search.indexOf('reset=1') !== -1) {
+ var resetDone = Promise.resolve();
+ try { localStorage.clear(); } catch(e) {}
+ if (window.caches && caches.keys) {
+ resetDone = resetDone.then(function(){ return caches.keys().then(function(keys) { return Promise.all(keys.map(function(k) { return caches.delete(k); })); }); });
+ }
+ if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+ resetDone = resetDone.then(function(){ return navigator.serviceWorker.getRegistrations().then(function(regs) { return Promise.all(regs.map(function(r) { return r.unregister(); })); }); });
+ }
+ resetDone.finally(function() {
+ location.replace(location.pathname + '?v=' + APP_VERSION + '&clean=' + Date.now());
+ });
+ return;
+ }
  var key = 'hh_app_version';
  var current = localStorage.getItem(key);
  if (current === APP_VERSION) return;

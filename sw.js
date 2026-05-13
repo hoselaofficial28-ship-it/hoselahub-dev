@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hosela-hub-20260513d';
+const CACHE_NAME = 'hosela-hub-20260513e';
 const ASSETS = [
   './',
   './index.html',
@@ -31,6 +31,10 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
   if (url.hostname.includes('script.google.com')) return;
   if (event.request.method !== 'GET') return;
+  if (url.pathname.endsWith('/reset.html') || url.searchParams.get('reset') === '1') {
+    event.respondWith(fetch(event.request, { cache: 'no-store' }));
+    return;
+  }
   event.respondWith(
     fetch(event.request).then(response => {
       const copy = response.clone();
