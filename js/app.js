@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260512e';
+var APP_VERSION = '20260513b';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -1826,6 +1826,8 @@ function kirimNotifPeraturan() {
 function openSideMenu() {
  var menu = document.getElementById('side-menu');
  var overlay = document.getElementById('side-menu-overlay');
+ overlay.style.zIndex = '9000';
+ menu.style.zIndex = '9001';
  menu.style.display = 'flex';
  overlay.style.display = 'block';
  setTimeout(function(){ menu.style.transform = 'translateX(0)'; }, 10);
@@ -1951,6 +1953,7 @@ function batalkanSanksi(id) {
 var _attendanceStream = null;
 var _attendancePhotoData = '';
 var _attendanceLocation = null;
+var _attendanceSubmitting = false;
 
 function loadAbsensiCamera() {
  _attendancePhotoData = '';
@@ -2077,12 +2080,21 @@ function syncAttendanceSubmitState() {
 }
 
 function submitAttendanceCamera() {
+ if (_attendanceSubmitting) return;
  if (!_attendancePhotoData) { showToast('Ambil foto dulu'); return; }
  if (!_attendanceLocation) { showToast('Lokasi belum terbaca'); getAttendanceLocation(); return; }
  var btn = document.getElementById('attendance-submit-btn');
  var tipe = document.getElementById('attendance-type').value;
+ _attendanceSubmitting = true;
+ if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; btn.classList.add('btn-loading'); }
+ updateAttendanceLocationStatus('Mengirim absensi '+tipe.toLowerCase()+'. Mohon tunggu...', '');
+ showToast('Absensi sedang dikirim...');
+ function resetAttendanceButton() {
+ _attendanceSubmitting = false;
+ if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; btn.classList.remove('btn-loading'); }
+ }
  function doSubmitAttendance() {
- if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; }
+ if (btn) { btn.textContent = 'Mengirim...'; btn.disabled = true; btn.classList.add('btn-loading'); }
  gasCall('submitAbsensiCamera', [currentUser.id, currentUser.nama, tipe, _attendancePhotoData, _attendanceLocation.lat, _attendanceLocation.lng, _attendanceLocation.accuracy, new Date().toISOString()], function(res) {
  finishAttendanceSubmit(res);
  }, function() {
@@ -2098,12 +2110,12 @@ function submitAttendanceCamera() {
  });
  return;
  }
- if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
+ resetAttendanceButton();
  updateAttendanceLocationStatus('Absensi dikirim. Status belum tersinkron, tarik layar untuk memuat ulang.', '');
  showToast('Absensi sedang diproses');
  loadAttendanceToday();
  }, function() {
- if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
+ resetAttendanceButton();
  updateAttendanceLocationStatus('Absensi dikirim. Status belum tersinkron, tarik layar untuk memuat ulang.', '');
  showToast('Absensi sedang diproses');
  loadAttendanceToday();
@@ -2111,7 +2123,7 @@ function submitAttendanceCamera() {
  });
  }
  function finishAttendanceSubmit(res) {
- if (btn) { btn.textContent = 'Kirim Absensi'; btn.disabled = false; }
+ resetAttendanceButton();
  if (!res || res.success === false) {
  updateAttendanceLocationStatus((res && res.msg) || 'Absensi ditolak.', 'bad');
  showToast((res && res.msg) || 'Absensi gagal');
@@ -2123,26 +2135,11 @@ function submitAttendanceCamera() {
  clearAttendanceMatrixCache(currentUser.id, bulanKey);
  showToast('Absensi diterima. Catatan kehadiran diperbarui.');
  _attendancePhotoData = '';
+ syncAttendanceSubmitState();
  loadAttendanceToday();
  refreshAttendanceMatrixIfOpen(currentUser.id, bulanKey);
  }
- gasCall('getAbsensiCameraToday', [currentUser.id], function(check) {
- var acceptedToday = ((check && check.data) || []).filter(function(r){ return r.status === 'DITERIMA'; });
- var sameType = acceptedToday.filter(function(r){ return String(r.tipe).toUpperCase() === String(tipe).toUpperCase(); });
- if (acceptedToday.length >= 2) {
- updateAttendanceLocationStatus('Hari ini sudah ada 2 tap. Absensi tambahan ditolak.', 'bad');
- showToast('Hari ini sudah tap masuk dan pulang.');
- return;
- }
- if (sameType.length > 0) {
- updateAttendanceLocationStatus('Absensi '+tipe.toLowerCase()+' hari ini sudah tercatat.', 'bad');
- showToast('Absensi '+tipe.toLowerCase()+' sudah tercatat.');
- return;
- }
- doSubmitAttendance();
- }, function() {
- doSubmitAttendance();
- });
+ setTimeout(doSubmitAttendance, 0);
 }
 
 function loadAttendanceToday() {

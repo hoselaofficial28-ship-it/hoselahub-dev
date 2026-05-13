@@ -696,6 +696,50 @@ textarea.form-input{line-height:1.45}
 .att-day.overtime em{color:#027a48;background:#d1fadf}
 .att-day.complete em{color:#1557d8;background:#e8f0ff}
 
+#side-menu-overlay{
+  z-index:9000!important;
+}
+#side-menu{
+  z-index:9001!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  overflow:hidden!important;
+  display:flex;
+  flex-direction:column;
+}
+#side-menu>div:first-child{flex-shrink:0}
+#side-menu>div:nth-child(2){
+  flex:1 1 auto!important;
+  overflow-y:auto;
+  min-height:0;
+  padding-bottom:16px!important;
+}
+#side-menu>div:last-child{
+  position:sticky;
+  bottom:0;
+  z-index:5;
+  flex-shrink:0;
+  background:#fff;
+  padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
+  box-shadow:0 -8px 20px rgba(16,24,40,.05);
+}
+.btn-loading{
+  position:relative;
+  opacity:.92;
+}
+.btn-loading::after{
+  content:'';
+  width:14px;
+  height:14px;
+  border:2px solid rgba(255,255,255,.45);
+  border-top-color:#fff;
+  border-radius:50%;
+  display:inline-block;
+  margin-left:8px;
+  vertical-align:-2px;
+  animation:spin .7s linear infinite;
+}
+
 html,body,#app-wrap,.screen,.content{overscroll-behavior:none}
 body{overflow:hidden}
 .screen.active{height:100vh;overflow:hidden}
