@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513l';
+var APP_VERSION = '20260513m';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -2570,6 +2570,10 @@ function renderAttendanceMatrix(res) {
  statusClass = ' rejected';
  statusSymbol = '&times;';
  statusTitle = 'Ditolak';
+ } else if (item.anomali) {
+ statusClass = ' anomaly';
+ statusSymbol = '!';
+ statusTitle = 'Tap anomali';
  } else if (item.absen) {
  statusClass = ' absent';
  statusSymbol = 'A';

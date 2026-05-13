@@ -694,6 +694,9 @@ textarea.form-input{line-height:1.45}
 .att-day.late{background:#fff1f5;border-color:#fecdd6}
 .att-day.late span{color:#be123c}
 .att-day.late em{color:#be123c;background:#ffe4ea}
+.att-day.anomaly{background:#fff7ed;border-color:#fed7aa}
+.att-day.anomaly span{color:#c2410c}
+.att-day.anomaly em{color:#fff;background:#f97316}
 .att-day.overtime{background:#ecfdf3;border-color:#abefc6}
 .att-day.overtime span{color:#027a48}
 .att-day.overtime em{color:#027a48;background:#d1fadf}
