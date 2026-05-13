@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513h';
+var APP_VERSION = '20260513i';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -53,6 +53,9 @@ var CAMERA_UNMIRROR = true;
 var SESSION_TTL = 10 * 24 * 60 * 60 * 1000;
 var _sideMenuOpen = false;
 var _deferredInstallPrompt = null;
+var _homeCategoryOpen = false;
+var _lastHomeBackAt = 0;
+var HOME_EXIT_TOAST = 'Tekan kembali sekali lagi untuk keluar dari Hosela Hub.';
 
 function ensureFreshRuntime() {
  try {
@@ -393,6 +396,7 @@ function goTo(id) {
   var prev = document.querySelector('.screen.active');
   var prevId = prev ? prev.id : null;
   if (prevId === 's-absensi-camera' && id !== 's-absensi-camera') stopAttendanceCamera();
+  if (id !== 's-home') _homeCategoryOpen = false;
   document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
  var el = document.getElementById(id);
  if (!el) return;
@@ -400,7 +404,15 @@ function goTo(id) {
  var c = el.querySelector('.content');
  if (c) c.scrollTop = 0;
  if (prevId && prevId !== id) {
- if (_navHistory[_navHistory.length - 1] !== id) _navHistory.push(prevId);
+ var skipHistoryPush = false;
+ if (id === 's-home' && (prevId === 's-login' || prevId === 's-force-pin')) {
+ _navHistory = [];
+ skipHistoryPush = true;
+ } else if (prevId === 's-login' || prevId === 's-force-pin') {
+ _navHistory = [];
+ skipHistoryPush = true;
+ }
+ if (!skipHistoryPush && _navHistory[_navHistory.length - 1] !== prevId) _navHistory.push(prevId);
  history.pushState({ screen: id }, '', '#' + id);
  }
  // Hapus badge menu yang dibuka + tandai notif menu tsb sebagai dibaca
@@ -446,6 +458,26 @@ function goTo(id) {
 window.addEventListener('popstate', function(e) {
  if (_sideMenuOpen) {
  closeSideMenu(true);
+ try { history.pushState({ screen: 's-home', sideClosed: true }, '', location.href); } catch(err) {}
+ return;
+ }
+ if (_homeCategoryOpen) {
+ closeHomeCategory(true);
+ try { history.pushState({ screen: 's-home', categoryClosed: true }, '', location.href); } catch(err) {}
+ return;
+ }
+ var active = document.querySelector('.screen.active');
+ var activeId = active ? active.id : '';
+ if (activeId === 's-home') {
+ var now = Date.now();
+ if (now - _lastHomeBackAt < 2200) {
+ _lastHomeBackAt = 0;
+ history.back();
+ return;
+ }
+ _lastHomeBackAt = now;
+ showToast(HOME_EXIT_TOAST);
+ try { history.pushState({ screen: 's-home', exitGuard: true }, '', location.href); } catch(err) {}
  return;
  }
  if (_navHistory.length > 0) {
@@ -1239,6 +1271,8 @@ function openHomeCategory(cat) {
  var desc = (window._homeMenuDesc || {})[cat] || '';
  var el = document.getElementById('home-menu');
  if (!el) return;
+ _homeCategoryOpen = true;
+ try { history.pushState({ screen: 's-home', category: cat }, '', '#home-category'); } catch(e) {}
  el.innerHTML = '<section class="home-menu-section home-menu-detail">'+
  '<button class="home-category-back" onclick="closeHomeCategory()">'+uiIcon('home')+' Kembali ke kategori</button>'+
  '<div class="home-section-head"><span></span><div><h2>'+cat+'</h2><p>'+desc+'</p></div></div>'+
@@ -1247,9 +1281,13 @@ function openHomeCategory(cat) {
  }).join('')+'</div></section>';
 }
 
-function closeHomeCategory() {
+function closeHomeCategory(fromHistory) {
  var el = document.getElementById('home-menu');
+ _homeCategoryOpen = false;
  if (el) el.innerHTML = renderHomeCategoryIndex();
+ if (!fromHistory) {
+ try { history.replaceState({ screen: 's-home' }, '', '#s-home'); } catch(e) {}
+ }
 }
 
 function refreshHomeData() {
