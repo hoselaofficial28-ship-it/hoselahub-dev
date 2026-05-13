@@ -759,6 +759,11 @@ body{overflow:hidden}
   flex-shrink:0;
 }
 #s-home .content{padding-bottom:104px}
+#s-detail .content,
+#s-rekap-bulanan .content,
+#s-catatan-kehadiran .content{
+  padding-bottom:180px;
+}
 .home-menu-btn{right:14px}
 .home-refresh-btn{
   position:absolute;
