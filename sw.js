@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hosela-hub-20260513c';
+const CACHE_NAME = 'hosela-hub-20260513d';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,7 @@ const ASSETS = [
   './js/payroll.js',
   './js/preview.js',
   './assets/logo.png',
+  './assets/icon-512.png',
   './manifest.webmanifest'
 ];
 
