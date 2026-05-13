@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513k';
+var APP_VERSION = '20260513l';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -2539,7 +2539,7 @@ function renderAttendanceMatrix(res) {
  '<div class="card"><b>'+users.length+'</b><span>Karyawan</span></div>'+
  '<div class="card"><b>'+((res.totalMasuk||0)+(res.totalPulang||0))+'</b><span>Total Tap</span></div>'+
  '</div>'+
- (_attendanceMatrixCanEdit ? '<button class="btn btn-primary attendance-process-btn" onclick="processAttendanceAppRecap()">Proses ke Rekap Resmi</button>' : '');
+ (_attendanceMatrixCanEdit ? '<div class="attendance-action-row"><button class="btn btn-gold attendance-import-btn" onclick="importAttendanceUploadToApp()">Import Fingerprint</button><button class="btn btn-primary attendance-process-btn" onclick="processAttendanceAppRecap()">Proses ke Rekap Resmi</button></div>' : '');
  }
  if (!users.length) {
  el.innerHTML = '<div class="empty-state"><div class="empty-icon"></div>Belum ada data absensi bulan ini</div>';
@@ -2653,6 +2653,25 @@ function saveAttendanceEdit(userId, tanggal) {
  loadAttendanceMatrix(true);
  }, function() {
  showToast('Koneksi gagal saat menyimpan');
+ });
+}
+
+function importAttendanceUploadToApp() {
+ var sel = document.getElementById('att-matrix-bulan');
+ var bulanKey = sel ? sel.value : '';
+ if (!bulanKey) return;
+ if (!confirm('Import data fingerprint dari sheet ABSENSI_UPLOAD ke absensi app bulan '+bulanKey+'? Data yang sudah ada akan dilewati agar tidak dobel.')) return;
+ var btn = document.querySelector('.attendance-import-btn');
+ if (btn) { btn.textContent = 'Mengimpor...'; btn.disabled = true; }
+ gasCall('importAbsensiUploadToApp', [bulanKey, currentUser ? currentUser.nama : ''], function(res) {
+ if (btn) { btn.textContent = 'Import Fingerprint'; btn.disabled = false; }
+ if (!res || !res.success) { showToast((res && res.msg) || 'Import gagal'); return; }
+ clearAttendanceMatrixCache(null, bulanKey);
+ showToast(res.msg || 'Import fingerprint selesai');
+ loadAttendanceMatrix(true);
+ }, function() {
+ if (btn) { btn.textContent = 'Import Fingerprint'; btn.disabled = false; }
+ showToast('Koneksi gagal saat import fingerprint');
  });
 }
 

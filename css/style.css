@@ -535,7 +535,9 @@ textarea.form-input{line-height:1.45}
 .attendance-summary-grid .card{margin:0;padding:12px;text-align:center}
 .attendance-summary-grid b{display:block;font-size:20px;color:#1557d8}
 .attendance-summary-grid span{font-size:11px;color:var(--text-muted)}
-.attendance-process-btn{margin:0 0 12px;min-height:42px}
+.attendance-action-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.attendance-action-row .btn{min-height:42px;padding:10px 8px;font-size:12px}
+.attendance-process-btn{min-height:42px}
 .att-user-card{padding:12px;margin-bottom:12px}
 .att-user-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px}
 .att-user-head b{font-size:14px;color:#101828}
