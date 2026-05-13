@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513i';
+var APP_VERSION = '20260513j';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -55,6 +55,7 @@ var _sideMenuOpen = false;
 var _deferredInstallPrompt = null;
 var _homeCategoryOpen = false;
 var _lastHomeBackAt = 0;
+var _allowAppExit = false;
 var HOME_EXIT_TOAST = 'Tekan kembali sekali lagi untuk keluar dari Hosela Hub.';
 
 function ensureFreshRuntime() {
@@ -392,6 +393,21 @@ function installApp() {
 // Navigation history stack untuk swipe back
 var _navHistory = [];
 
+function activeScreenId() {
+ var active = document.querySelector('.screen.active');
+ return active ? active.id : '';
+}
+
+function ensureHomeBackGuard() {
+ if (activeScreenId() !== 's-home') return;
+ try {
+ var state = history.state || {};
+ if (state.appGuard) return;
+ history.replaceState({ screen: 's-home', homeBase: true }, '', '#home');
+ history.pushState({ screen: 's-home', appGuard: true }, '', '#home');
+ } catch(e) {}
+}
+
 function goTo(id) {
   var prev = document.querySelector('.screen.active');
   var prevId = prev ? prev.id : null;
@@ -452,32 +468,34 @@ function goTo(id) {
  console.error('Route error:', id, routeErr);
  showToast('Menu gagal dibuka. Coba lagi.');
  }
+ if (id === 's-home') setTimeout(ensureHomeBackGuard, 50);
 }
 
 // Handle browser back button / swipe back
 window.addEventListener('popstate', function(e) {
+ if (_allowAppExit) return;
  if (_sideMenuOpen) {
  closeSideMenu(true);
- try { history.pushState({ screen: 's-home', sideClosed: true }, '', location.href); } catch(err) {}
+ setTimeout(ensureHomeBackGuard, 20);
  return;
  }
  if (_homeCategoryOpen) {
  closeHomeCategory(true);
- try { history.pushState({ screen: 's-home', categoryClosed: true }, '', location.href); } catch(err) {}
+ setTimeout(ensureHomeBackGuard, 20);
  return;
  }
- var active = document.querySelector('.screen.active');
- var activeId = active ? active.id : '';
+ var activeId = activeScreenId();
  if (activeId === 's-home') {
  var now = Date.now();
  if (now - _lastHomeBackAt < 2200) {
  _lastHomeBackAt = 0;
- history.back();
+ _allowAppExit = true;
+ setTimeout(function(){ history.back(); }, 0);
  return;
  }
  _lastHomeBackAt = now;
  showToast(HOME_EXIT_TOAST);
- try { history.pushState({ screen: 's-home', exitGuard: true }, '', location.href); } catch(err) {}
+ ensureHomeBackGuard();
  return;
  }
  if (_navHistory.length > 0) {
@@ -487,7 +505,7 @@ window.addEventListener('popstate', function(e) {
  if (el) el.classList.add('active');
  } else {
  // Tidak ada history — push state lagi supaya tidak keluar app
- history.pushState({}, '', window.location.pathname);
+ try { history.pushState({ screen: activeId || 's-home', appGuard: true }, '', location.href); } catch(err) {}
  }
 });
 
