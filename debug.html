@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Debug Hosela Hub</title>
+  <style>
+    :root {
+      --blue: #0876f2;
+      --blue-dark: #0459c9;
+      --bg: #f3f8ff;
+      --line: #d9e6f7;
+      --text: #102033;
+      --muted: #6d7b8f;
+      --ok: #0f9f6e;
+      --bad: #d72f45;
+      --warn: #b7791f;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 18px;
+    }
+
+    .wrap {
+      margin: 0 auto;
+      max-width: 720px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, var(--blue-dark), var(--blue));
+      border-radius: 24px;
+      color: #fff;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin: 0 0 8px;
+    }
+
+    p {
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 8px 0 0;
+    }
+
+    .hero p {
+      color: rgba(255,255,255,.78);
+    }
+
+    .panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: 0 16px 38px rgba(16,32,51,.08);
+      margin-top: 14px;
+      padding: 18px;
+    }
+
+    .row {
+      align-items: flex-start;
+      border-bottom: 1px solid #edf3fb;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 112px 1fr;
+      padding: 12px 0;
+    }
+
+    .row:last-child { border-bottom: 0; }
+    .label {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .value {
+      font-size: 13px;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
+    .status {
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 5px 10px;
+    }
+
+    .ok { background: #e7f8f1; color: var(--ok); }
+    .bad { background: #ffedf0; color: var(--bad); }
+    .warn { background: #fff7dd; color: var(--warn); }
+    .info { background: #eaf3ff; color: var(--blue); }
+
+    .btns {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 1fr;
+      margin-top: 14px;
+    }
+
+    button, a.button {
+      align-items: center;
+      background: var(--blue);
+      border: 0;
+      border-radius: 14px;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      font: inherit;
+      font-weight: 800;
+      justify-content: center;
+      min-height: 48px;
+      padding: 12px 16px;
+      text-decoration: none;
+    }
+
+    button.secondary, a.secondary {
+      background: #eaf3ff;
+      color: var(--blue-dark);
+    }
+
+    button.danger {
+      background: #ffecef;
+      color: var(--bad);
+    }
+
+    textarea {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      font: 12px ui-monospace, SFMono-Regular, Consolas, monospace;
+      height: 180px;
+      margin-top: 12px;
+      padding: 12px;
+      resize: vertical;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>Debug Hosela Hub</h1>
+      <p>Halaman ini mengecek kenapa Chrome normal bisa koneksi gagal sementara incognito bisa jalan.</p>
+    </section>
+
+    <section class="panel" id="results"></section>
+
+    <section class="panel">
+      <strong>Langkah cepat</strong>
+      <p>Buka halaman ini dari Chrome normal yang bermasalah, tunggu semua test selesai, lalu tekan Salin Laporan.</p>
+      <div class="btns">
+        <button type="button" onclick="copyReport()">Salin Laporan</button>
+        <button type="button" class="danger" onclick="hardReset()">Reset Data Browser App Ini</button>
+        <a class="button secondary" href="./index.html?v=20260513f">Buka App</a>
+      </div>
+      <textarea id="report" readonly></textarea>
+    </section>
+  </main>
+
+  <script>
+    var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
+    var APP_VERSION = '20260513f';
+    var rows = [];
+    var results = document.getElementById('results');
+    var report = document.getElementById('report');
+
+    function addRow(name, status, detail) {
+      rows.push({ name: name, status: status, detail: detail });
+      render();
+    }
+
+    function cls(status) {
+      if (status === 'OK') return 'ok';
+      if (status === 'GAGAL') return 'bad';
+      if (status === 'PERIKSA') return 'warn';
+      return 'info';
+    }
+
+    function render() {
+      results.innerHTML = rows.map(function(row) {
+        return '<div class="row"><div class="label">' + escapeHtml(row.name) + '</div><div class="value"><span class="status ' + cls(row.status) + '">' + escapeHtml(row.status) + '</span>\n' + escapeHtml(row.detail || '') + '</div></div>';
+      }).join('');
+      report.value = [
+        'Hosela Hub Debug ' + APP_VERSION,
+        'Waktu: ' + new Date().toString(),
+        'URL: ' + location.href,
+        'UserAgent: ' + navigator.userAgent,
+        ''
+      ].concat(rows.map(function(row) {
+        return row.name + ': ' + row.status + '\n' + (row.detail || '-');
+      })).join('\n\n');
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function timeout(ms) {
+      return new Promise(function(resolve) {
+        setTimeout(resolve, ms);
+      });
+    }
+
+    function testStorage() {
+      try {
+        localStorage.setItem('hh_debug_test', String(Date.now()));
+        var value = localStorage.getItem('hh_debug_test');
+        localStorage.removeItem('hh_debug_test');
+        addRow('LocalStorage', value ? 'OK' : 'GAGAL', value ? 'Browser bisa menyimpan data sesi.' : 'Data sesi tidak bisa dibaca.');
+      } catch (err) {
+        addRow('LocalStorage', 'GAGAL', err.message || String(err));
+      }
+    }
+
+    function testServiceWorker() {
+      if (!('serviceWorker' in navigator)) {
+        addRow('ServiceWorker', 'PERIKSA', 'Browser tidak mendukung service worker.');
+        return Promise.resolve();
+      }
+      return navigator.serviceWorker.getRegistrations().then(function(regs) {
+        var detail = 'Controller: ' + (navigator.serviceWorker.controller ? 'ada' : 'tidak ada') + '\nJumlah registration: ' + regs.length;
+        regs.forEach(function(reg, i) {
+          detail += '\n' + (i + 1) + '. scope=' + reg.scope;
+        });
+        addRow('ServiceWorker', regs.length ? 'PERIKSA' : 'OK', detail);
+      }).catch(function(err) {
+        addRow('ServiceWorker', 'GAGAL', err.message || String(err));
+      });
+    }
+
+    function testCaches() {
+      if (!('caches' in window)) {
+        addRow('CacheStorage', 'PERIKSA', 'Browser tidak mendukung CacheStorage.');
+        return Promise.resolve();
+      }
+      return caches.keys().then(function(keys) {
+        addRow('CacheStorage', keys.length ? 'PERIKSA' : 'OK', keys.length ? keys.join('\n') : 'Tidak ada cache app yang tersisa.');
+      }).catch(function(err) {
+        addRow('CacheStorage', 'GAGAL', err.message || String(err));
+      });
+    }
+
+    function testFetchGas() {
+      var url = GAS_URL + '?action=ping&args=[]&_t=' + Date.now();
+      return fetch(url, { cache: 'no-store', redirect: 'follow' })
+        .then(function(res) {
+          return res.text().then(function(text) {
+            var shortText = text.slice(0, 220);
+            addRow('Fetch GAS', res.ok ? 'OK' : 'GAGAL', 'HTTP ' + res.status + '\n' + shortText);
+          });
+        })
+        .catch(function(err) {
+          addRow('Fetch GAS', 'GAGAL', err.message || String(err));
+        });
+    }
+
+    function testJsonpGas() {
+      return new Promise(function(resolve) {
+        var callbackName = 'hh_debug_jsonp_' + Date.now();
+        var script = document.createElement('script');
+        var finished = false;
+        var oldError = window.onerror;
+        var timer = setTimeout(function() {
+          finish('GAGAL', 'Timeout. Chrome tidak menerima response JSONP dari GAS dalam 12 detik.');
+        }, 12000);
+
+        function finish(status, detail) {
+          if (finished) return;
+          finished = true;
+          clearTimeout(timer);
+          window.onerror = oldError;
+          try { delete window[callbackName]; } catch (err) { window[callbackName] = undefined; }
+          if (script.parentNode) script.parentNode.removeChild(script);
+          addRow('JSONP GAS', status, detail);
+          resolve();
+        }
+
+        window.onerror = function(message, source, lineno, colno, error) {
+          if (source && source.indexOf('script.google') !== -1) {
+            finish('GAGAL', 'Script GAS tidak valid di browser ini.\n' + message);
+            return true;
+          }
+          if (oldError) return oldError.apply(window, arguments);
+          return false;
+        };
+
+        window[callbackName] = function(data) {
+          finish(data && data.success ? 'OK' : 'PERIKSA', JSON.stringify(data));
+        };
+
+        script.onerror = function() {
+          finish('GAGAL', 'Script tag gagal memuat GAS. Kemungkinan diblok jaringan/browser.');
+        };
+        script.src = GAS_URL + '?action=ping&args=[]&callback=' + encodeURIComponent(callbackName) + '&_t=' + Date.now();
+        document.head.appendChild(script);
+      });
+    }
+
+    function testAppFile() {
+      return fetch('./js/app.js?v=' + APP_VERSION + '&_t=' + Date.now(), { cache: 'no-store' })
+        .then(function(res) { return res.text().then(function(text) {
+          addRow('File App', text.indexOf(APP_VERSION) !== -1 ? 'OK' : 'PERIKSA', 'HTTP ' + res.status + '\nVersi ditemukan: ' + (text.indexOf(APP_VERSION) !== -1 ? 'ya' : 'tidak'));
+        }); })
+        .catch(function(err) {
+          addRow('File App', 'GAGAL', err.message || String(err));
+        });
+    }
+
+    function copyReport() {
+      report.select();
+      report.setSelectionRange(0, report.value.length);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(report.value).then(function() {
+          alert('Laporan sudah disalin.');
+        }).catch(function() {
+          document.execCommand('copy');
+          alert('Laporan sudah disalin.');
+        });
+      } else {
+        document.execCommand('copy');
+        alert('Laporan sudah disalin.');
+      }
+    }
+
+    function hardReset() {
+      Promise.resolve()
+        .then(function() {
+          try { localStorage.clear(); sessionStorage.clear(); } catch (err) {}
+        })
+        .then(function() {
+          if (!('caches' in window)) return null;
+          return caches.keys().then(function(keys) {
+            return Promise.all(keys.map(function(key) { return caches.delete(key); }));
+          });
+        })
+        .then(function() {
+          if (!('serviceWorker' in navigator) || !navigator.serviceWorker.getRegistrations) return null;
+          return navigator.serviceWorker.getRegistrations().then(function(regs) {
+            return Promise.all(regs.map(function(reg) { return reg.unregister(); }));
+          });
+        })
+        .then(function() {
+          location.replace('./index.html?v=' + APP_VERSION + '&clean=' + Date.now());
+        });
+    }
+
+    (function run() {
+      addRow('Browser', 'INFO', navigator.userAgent + '\nOnline: ' + navigator.onLine + '\nOrigin: ' + location.origin);
+      testStorage();
+      Promise.resolve()
+        .then(testServiceWorker)
+        .then(testCaches)
+        .then(testAppFile)
+        .then(testFetchGas)
+        .then(testJsonpGas);
+    })();
+  </script>
+</body>
+</html>
