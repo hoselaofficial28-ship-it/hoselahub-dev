@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513j';
+var APP_VERSION = '20260513k';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -56,6 +56,8 @@ var _deferredInstallPrompt = null;
 var _homeCategoryOpen = false;
 var _lastHomeBackAt = 0;
 var _allowAppExit = false;
+var _homeLoaded = false;
+var _homeLoadedUserId = '';
 var HOME_EXIT_TOAST = 'Tekan kembali sekali lagi untuk keluar dari Hosela Hub.';
 
 function ensureFreshRuntime() {
@@ -522,6 +524,8 @@ function showPinLoading(loading) {
 function gantiAkun() {
  localStorage.removeItem('hh_username');
  clearLoginSession();
+ _homeLoaded = false;
+ _homeLoadedUserId = '';
  document.getElementById('login-username').value = '';
  document.getElementById('username-group').style.display = 'block';
  document.getElementById('login-username').focus();
@@ -561,8 +565,15 @@ function doLogin() {
  });
 }
 
-function loadHome() {
+function loadHome(forceRefresh) {
  var u = currentUser;
+ if (!u) return;
+ if (!forceRefresh && _homeLoaded && _homeLoadedUserId === u.id) {
+ startHomeClock();
+ return;
+ }
+ _homeLoaded = true;
+ _homeLoadedUserId = u.id;
  // GAS CacheService mengelola cache server-side — tidak perlu bust dari frontend
 
  // Kata-kata semangat rotasi harian
@@ -1313,7 +1324,8 @@ function refreshHomeData() {
  var btn = document.querySelector('.home-refresh-btn');
  if (btn) btn.classList.add('loading');
  cacheClear('getHomeData' + JSON.stringify([currentUser.id, currentUser.bagian]));
- loadHome();
+ _homeLoaded = false;
+ loadHome(true);
  setTimeout(function(){ if (btn) btn.classList.remove('loading'); }, 900);
  showToast('Data diperbarui');
 }
@@ -2047,6 +2059,8 @@ function doLogout() {
  if (!confirm('Yakin ingin logout?')) return;
  closeSideMenu();
  currentUser = null;
+ _homeLoaded = false;
+ _homeLoadedUserId = '';
  clearLoginSession();
  localStorage.removeItem('hh_username');
  goTo('s-login');
