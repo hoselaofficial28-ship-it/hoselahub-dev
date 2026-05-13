@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513f';
+var APP_VERSION = '20260513g';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -176,6 +176,28 @@ function gasJsonp(action, args, success, failure) {
  }, 20000);
 }
 
+function gasFetchGet(action, args, success, failure) {
+ var ts = CACHEABLE.indexOf(action) !== -1 ? '' : '&_t=' + Date.now();
+ var url = GAS_URL + '?action=' + encodeURIComponent(action) + '&args=' + encodeURIComponent(JSON.stringify(args || [])) + ts;
+ fetch(url, { redirect: 'follow', cache: 'no-store' })
+ .then(function(r) {
+ return r.text().then(function(text) {
+ if (!r.ok) throw new Error('HTTP ' + r.status + ': ' + text.slice(0, 160));
+ try {
+ return JSON.parse(text);
+ } catch(e) {
+ throw new Error('Response GAS bukan JSON: ' + text.slice(0, 160));
+ }
+ });
+ })
+ .then(function(data) {
+ if (success) success(data);
+ })
+ .catch(function(err) {
+ if (failure) failure(err);
+ });
+}
+
 function gasFormPost(action, args, success, failure) {
  var iframeName = 'hh_post_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
  var iframe = document.createElement('iframe');
@@ -198,7 +220,7 @@ function gasFormPost(action, args, success, failure) {
  function verifyAttendance(attempt) {
  if (finished) return;
  attempt = attempt || 1;
- gasJsonp('getAbsensiCameraToday', [args && args[0]], function(res) {
+ gasFetchGet('getAbsensiCameraToday', [args && args[0]], function(res) {
  var latest = res && res.data && res.data[0];
  if (!latest) {
  if (attempt < 4) {
@@ -289,6 +311,19 @@ function gasCall(action, args, success, failure) {
  gasFormPost(action, args, success, failure || function(err){ console.error('GAS Error:', err); });
  return;
  }
+ var runFetch = function(attempt) {
+ gasFetchGet(action, args, function(data) {
+ if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
+ if (success) success(data);
+ }, function(err) {
+ if ((attempt || 1) < 2) {
+ setTimeout(function(){ runFetch((attempt || 1) + 1); }, 700);
+ return;
+ }
+ console.warn('Fetch GAS gagal, mencoba JSONP:', err);
+ runJsonp(1);
+ });
+ };
  var runJsonp = function(attempt) {
  gasJsonp(action, args, function(data) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
@@ -297,19 +332,14 @@ function gasCall(action, args, success, failure) {
  retryableFailure(err, attempt || 1, runJsonp);
  });
  };
- runJsonp(1);
+ runFetch(1);
  return;
  }
  // Tambah timestamp untuk bust browser cache pada action non-cacheable
- var ts = CACHEABLE.indexOf(action) !== -1 ? '' : '&_t=' + Date.now();
- var url = GAS_URL + '?action=' + encodeURIComponent(action) + '&args=' + encodeURIComponent(JSON.stringify(args || [])) + ts;
- fetch(url, { redirect: 'follow', cache: 'no-store' })
- .then(function(r) { return r.json(); })
- .then(function(data) {
+ gasFetchGet(action, args, function(data) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
  if (success) success(data);
- })
- .catch(function(e) {
+ }, function(e) {
  console.warn('Fetch GAS gagal, mencoba JSONP:', e);
  gasJsonp(action, args, function(data) {
  if (CACHEABLE.indexOf(action) !== -1) cacheSet(cacheKey, data);
