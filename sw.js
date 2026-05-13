@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hosela-hub-20260513g';
+const CACHE_NAME = 'hosela-hub-20260513h';
 const ASSETS = [
   './',
   './index.html',
