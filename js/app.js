@@ -1,5 +1,5 @@
 var GAS_URL = 'https://script.google.com/macros/s/AKfycbxDAHTGFbjG2RMjIPqUmdLbPO3TqKFfpPuEw9p5sdc4tEJXy6zsyyzhQ6pO65Pben4ywQ/exec';
-var APP_VERSION = '20260513o';
+var APP_VERSION = '20260516a';
 var currentUser = null;
 var currentBagian = null;
 var pinBuffer = '';
@@ -48,7 +48,9 @@ function uiIcon(name, cls) {
 // Cache sistem — simpan data di memori supaya tidak fetch ulang
 var _cache = {};
 var _cacheExpiry = {};
-var CACHE_TTL = 60000; // 1 menit
+var CACHE_TTL = 5 * 60 * 1000;
+var CACHE_PREFIX = 'hh_cache_';
+var _prefetchStarted = false;
 var CAMERA_UNMIRROR = true;
 var SESSION_TTL = 10 * 24 * 60 * 60 * 1000;
 var _sideMenuOpen = false;
@@ -107,15 +109,30 @@ window.addEventListener('error', function(e) {
 
 function cacheGet(key) {
  if (_cache[key] && _cacheExpiry[key] > Date.now()) return _cache[key];
+ try {
+ var raw = localStorage.getItem(CACHE_PREFIX + key);
+ if (!raw) return null;
+ var parsed = JSON.parse(raw);
+ if (!parsed || !parsed.expires || parsed.expires <= Date.now()) {
+ localStorage.removeItem(CACHE_PREFIX + key);
+ return null;
+ }
+ _cache[key] = parsed.value;
+ _cacheExpiry[key] = parsed.expires;
+ return parsed.value;
+ } catch(e) {}
  return null;
 }
 function cacheSet(key, val, ttl) {
+ var expires = Date.now() + (ttl || CACHE_TTL);
  _cache[key] = val;
- _cacheExpiry[key] = Date.now() + (ttl || CACHE_TTL);
+ _cacheExpiry[key] = expires;
+ try { localStorage.setItem(CACHE_PREFIX + key, JSON.stringify({ value: val, expires: expires })); } catch(e) {}
 }
 function cacheClear(key) {
  delete _cache[key];
  delete _cacheExpiry[key];
+ try { localStorage.removeItem(CACHE_PREFIX + key); } catch(e) {}
 }
 
 function saveLoginSession(user, username) {
@@ -150,7 +167,13 @@ function clearLoginSession() {
 }
 
 // Actions yang boleh di-cache (read-only)
-var CACHEABLE = ['getJobdeskList','getStaffByBagian','getJobdeskByBagian','getJobdeskByJabatan','getUserKPI','getKalenderLibur','getAllUsers','getPengumuman','getIde','getAbsensiRekap','getRekapBulananSemua','getPayrollPreview'];
+var CACHEABLE = [
+ 'getHomeData','getJobdeskList','getStaffByBagian','getJobdeskByBagian','getJobdeskByJabatan',
+ 'getUserKPI','getKalenderLibur','getAllUsers','getPengumuman','getIde','getAbsensiRekap',
+ 'getRekapBulananSemua','getPayrollPreview','getPapanPeringkat','getPeraturan','getKPILaporan',
+ 'getNotifikasi','getIzinKaryawan','getIzinPendingCount','getSanksiManual','getPayrollEmployeeSlip',
+ 'getAbsensiMatrix','getAbsensiMatrixUser'
+];
 
 function gasJsonp(action, args, success, failure) {
  var cbName = 'hh_jsonp_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
@@ -355,6 +378,36 @@ function gasCall(action, args, success, failure) {
 }
 
 // Warm up GAS saat app dibuka — ping dulu supaya tidak cold start saat login
+function prefetchCommonData() {
+ if (_prefetchStarted || !currentUser) return;
+ _prefetchStarted = true;
+ var u = currentUser;
+ var now = new Date();
+ var bulanKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+ var jobs = [
+ ['getPengumuman', [u.bagian]],
+ ['getJobdeskList', []],
+ ['getPeraturan', []],
+ ['getPapanPeringkat', []],
+ ['getNotifikasi', [u.id]],
+ ['getAbsensiRekap', [u.id]]
+ ];
+ if (u.bagian !== 'Owner' && u.bagian !== 'Finance') {
+ jobs.push(['getIzinKaryawan', [u.id]]);
+ jobs.push(['getAbsensiMatrixUser', [u.id, bulanKey]]);
+ jobs.push(['getPayrollEmployeeSlip', [u.id]]);
+ }
+ if (u.bagian === 'Owner' || u.bagian === 'Finance') {
+ jobs.push(['getKalenderLibur', []]);
+ jobs.push(['getIzinPendingCount', []]);
+ jobs.push(['getRekapBulananSemua', [bulanKey]]);
+ jobs.push(['getPayrollPreview', [bulanKey]]);
+ }
+ jobs.forEach(function(job, idx) {
+ setTimeout(function() { gasCall(job[0], job[1], function(){}, function(){}); }, 650 + idx * 220);
+ });
+}
+
 function warmUpGAS() {
  if (window.google && google.script && google.script.run) {
  gasCall('ping', [], function(){}, function(){});
@@ -524,6 +577,7 @@ function showPinLoading(loading) {
 function gantiAkun() {
  localStorage.removeItem('hh_username');
  clearLoginSession();
+ _prefetchStarted = false;
  _homeLoaded = false;
  _homeLoadedUserId = '';
  document.getElementById('login-username').value = '';
@@ -655,6 +709,7 @@ function loadHome(forceRefresh) {
  var prevBtn = document.querySelector('.preview-btn');
  if (prevBtn) prevBtn.style.display = (!isTouchDevice && (u.bagian === 'Owner' || u.bagian === 'Finance')) ? 'flex' : 'none';
  document.getElementById('home-menu').innerHTML = renderHomeMenuSections(menus);
+ setTimeout(prefetchCommonData, 450);
 
  // Spinner reward untuk semua user
  document.getElementById('reward-section').innerHTML =
@@ -2061,6 +2116,7 @@ function doLogout() {
  currentUser = null;
  _homeLoaded = false;
  _homeLoadedUserId = '';
+ _prefetchStarted = false;
  clearLoginSession();
  localStorage.removeItem('hh_username');
  goTo('s-login');
