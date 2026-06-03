@@ -120,9 +120,12 @@ function renderSalaryUsers(rows) {
  '</div>' +
  '<label class="form-label">Gaji Bulanan</label>' +
  '<input class="form-input" type="number" min="0" inputmode="numeric" id="salary-'+safeId+'" value="'+(parseInt(r.gajiBulanan || 0, 10) || 0)+'" style="margin-bottom:8px">' +
- '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+ '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
  '<div style="font-size:11px;color:var(--text-muted)">Saat ini: <b>Rp '+(parseInt(r.gajiBulanan || 0, 10) || 0).toLocaleString('id-ID')+'</b></div>' +
+ '<div style="display:flex;gap:6px">' +
+ '<button class="btn btn-sm btn-danger" onclick="deleteSalaryUser(&quot;'+salaryEsc(id)+'&quot;, this)">Hapus</button>' +
  '<button class="btn btn-sm btn-gold" onclick="saveSalaryUser(&quot;'+salaryEsc(id)+'&quot;, this)">Simpan</button>' +
+ '</div>' +
  '</div>' +
  '</div>';
  });
@@ -162,6 +165,32 @@ function saveSalaryUser(userId, btn) {
  }, function() {
  showToast('Gagal simpan gaji');
  if (btn) { btn.disabled = false; btn.textContent = 'Simpan'; }
+ });
+}
+
+function deleteSalaryUser(userId, btn) {
+ if (!currentUser || (currentUser.bagian !== 'Finance' && currentUser.bagian !== 'Owner')) {
+ showToast('Akses ditolak');
+ return;
+ }
+ var user = _salaryUserMap[userId] || {};
+ var nama = user.nama || userId;
+ if (!confirm('Hapus/nonaktifkan '+nama+'?\nKaryawan tidak bisa login lagi dan tidak muncul di payroll aktif.')) return;
+ if (btn) { btn.disabled = true; btn.textContent = 'Menghapus...'; }
+ gasCall('deactivateSalaryUser', [currentUser.id, userId], function(res) {
+ if (!res || res.error || res.success === false) {
+ showToast((res && (res.msg || res.error)) || 'Gagal hapus karyawan');
+ if (btn) { btn.disabled = false; btn.textContent = 'Hapus'; }
+ return;
+ }
+ _salaryUsersCache = [];
+ Object.keys(_payrollPreviewCache).forEach(function(k){ delete _payrollPreviewCache[k]; });
+ Object.keys(_payrollDetailCache).forEach(function(k){ delete _payrollDetailCache[k]; });
+ showToast((res.nama || nama)+' berhasil dinonaktifkan');
+ loadSalarySettings(true);
+ }, function() {
+ showToast('Gagal hapus karyawan');
+ if (btn) { btn.disabled = false; btn.textContent = 'Hapus'; }
  });
 }
 
