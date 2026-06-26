@@ -303,10 +303,30 @@
 <div class="screen" id="s-manage-users">
  <div class="statusbar"></div>
  <div class="header">
- <div class="header-row"><button class="back-btn" onclick="goTo('s-home')">‹</button><div><h1>Kelola Karyawan</h1><p>Aktif / Nonaktif akses</p></div></div>
+ <div class="header-row"><button class="back-btn" onclick="goTo('s-home')">‹</button><div><h1>Kelola Karyawan</h1><p>Aktif / Nonaktif akses</p></div><button class="btn btn-primary btn-sm" style="margin-left:auto;white-space:nowrap" onclick="goTo('s-tambah-karyawan')">+ Tambah</button></div>
  <div class="gold-line"></div>
  </div>
  <div class="content" id="users-list"><div class="empty-state"><div class="empty-icon"></div>Memuat...</div></div>
+</div>
+
+<!-- TAMBAH KARYAWAN BARU -->
+<div class="screen" id="s-tambah-karyawan">
+ <div class="statusbar"></div>
+ <div class="header">
+ <div class="header-row"><button class="back-btn" onclick="goTo('s-manage-users')">‹</button><div><h1>Tambah Karyawan</h1><p>Daftarkan anggota baru</p></div></div>
+ <div class="gold-line"></div>
+ </div>
+ <div class="content">
+ <div class="form-group"><label class="form-label">Nama Lengkap</label><input type="text" class="form-input" id="tk-nama" placeholder="Nama karyawan baru" autocomplete="off"></div>
+ <div class="form-group"><label class="form-label">Bagian</label><input type="text" class="form-input" id="tk-bagian" placeholder="Contoh: Packing, Live, Ecommerce"></div>
+ <div class="form-group"><label class="form-label">Jabatan</label><input type="text" class="form-input" id="tk-jabatan" placeholder="Contoh: Staff, Kepala Tim"></div>
+ <div class="form-group"><label class="form-label">Email <span style="color:var(--muted);font-weight:400">(opsional)</span></label><input type="email" class="form-input" id="tk-email" placeholder="email@gmail.com"></div>
+ <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:12px;margin-bottom:16px;font-size:13px;color:#92400e">
+ Password default: <b>hosela</b> — karyawan wajib ganti setelah login pertama.
+ </div>
+ <button class="btn btn-primary" id="tk-btn" onclick="submitTambahKaryawan()">Daftarkan Karyawan</button>
+ <div id="tk-error" class="pin-error"></div>
+ </div>
 </div>
 
 <!-- ABSENSI UPLOAD (Finance) -->
