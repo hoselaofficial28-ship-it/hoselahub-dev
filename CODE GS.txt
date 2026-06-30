@@ -4375,6 +4375,25 @@ function setupTriggers() {
   ScriptApp.newTrigger('reminderKPIChecklist').timeBased().onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(8).create();
   ScriptApp.newTrigger('cekDeadlineAnomali').timeBased().everyDays(1).atHour(9).create();
   ScriptApp.newTrigger('updatePapanPeringkat').timeBased().everyDays(1).atHour(9).create();
+  ScriptApp.newTrigger('autoProcessAbsensiBulanan').timeBased().everyDays(1).atHour(23).create();
+}
+
+// Jalan otomatis setiap hari jam 23:00, aktif hanya di tanggal 15 dan hari terakhir bulan
+function autoProcessAbsensiBulanan() {
+  const now = new Date();
+  const tz = Session.getScriptTimeZone();
+  const tgl = parseInt(Utilities.formatDate(now, tz, 'd'), 10);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+  if (tgl !== 15 && tgl !== lastDay) return;
+
+  const bulanKey = Utilities.formatDate(now, tz, 'yyyy-MM');
+  try {
+    const result = processAbsensiAppToRekap(bulanKey, 'AutoTrigger');
+    Logger.log('autoProcessAbsensiBulanan [' + bulanKey + ' tgl-' + tgl + ']: ' + JSON.stringify(result));
+  } catch(e) {
+    Logger.log('autoProcessAbsensiBulanan ERROR: ' + e);
+  }
 }
 
 function updatePapanPeringkat() {
