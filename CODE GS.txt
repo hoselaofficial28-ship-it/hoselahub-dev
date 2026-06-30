@@ -1,4 +1,4 @@
-// ================================================
+﻿// ================================================
 // HOSELA HUB â€” Code.gs (Server Side) â€” FULL VERSION
 // ================================================
 
@@ -858,9 +858,26 @@ function hitungBintang(userId) {
   else if (absenMurni >= 2) gateCap = 3;
   bintang = Math.min(bintang, gateCap);
 
+  // SP Gate: cap bintang berdasarkan SP bulan ini (SP1=max4, SP2=max3, SP3=max2)
+  let spGateCap = 5;
+  let spLevel = '';
+  const spSheet = ss.getSheetByName('SP_HISTORY');
+  if (spSheet && spSheet.getLastRow() > 1) {
+    const spData = spSheet.getDataRange().getValues();
+    for (let i = 1; i < spData.length; i++) {
+      if (String(spData[i][1]) !== String(userId)) continue;
+      if (String(spData[i][2]) !== bulanAbsensi) continue;
+      const tipe = String(spData[i][3]);
+      if (tipe === 'SP3') { spGateCap = Math.min(spGateCap, 2); spLevel = 'SP3'; }
+      else if (tipe === 'SP2' && spGateCap > 3) { spGateCap = 3; if (!spLevel) spLevel = 'SP2'; }
+      else if (tipe === 'SP1' && spGateCap > 4) { spGateCap = 4; if (!spLevel) spLevel = 'SP1'; }
+    }
+  }
+  bintang = Math.min(bintang, spGateCap);
+
   // â”€â”€ Runtime validation log â”€â”€
   Logger.log('=== RUNTIME VALIDATION ===');
-  Logger.log('score='+skorAkhir+' | baseStar='+baseStar+' | absenMurni='+absenMurni+' | gateCap='+gateCap+' | finalStar='+bintang);
+  Logger.log('score='+skorAkhir+' | baseStar='+baseStar+' | absenMurni='+absenMurni+' | gateCap='+gateCap+' | spLevel='+spLevel+' | spGateCap='+spGateCap+' | finalStar='+bintang);
   Logger.log('Execution: scoreâ†’baseStarâ†’gateâ†’finalStarâ†’saveâ†’UI');
   Logger.log('==========================');
 
@@ -3507,6 +3524,9 @@ function processAbsensiAppToRekap(bulanKey, actor) {
     CacheService.getScriptCache().removeAll(keys);
   } catch(e) {}
   clearAbsensiMatrixCache_(bulanKey, Object.keys(users));
+
+  // Hitung ulang bintang semua karyawan agar SP langsung tercermin di bintang
+  try { hitungSemuaBintang(); } catch(e) { Logger.log('hitungSemuaBintang error: '+e); }
 
   appendAuditLog_(actor || 'System', 'PROCESS_ABSENSI_APP_TO_REKAP', bulanKey, '', 'detail=' + detailCount + '; rekap=' + rekapCount + '; sp=' + semuaSP.length, 'Sumber ABSENSI_APP dengan tag [APP_SYNC]');
   return { success: true, bulan: bulanKey, acceptedRows: acceptedRows, detailRows: detailCount, rekapRows: rekapCount, spCount: semuaSP.length, msg: 'Rekap absensi kamera berhasil diproses.' + (semuaSP.length > 0 ? ' ' + semuaSP.length + ' SP diterbitkan.' : '') };
