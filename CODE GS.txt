@@ -5064,7 +5064,7 @@ function getWeekString(date) {
 
 
 // ─── TELEGRAM NOTIFICATION ───────────────────────────────────
-const TELEGRAM_BOT_TOKEN = '8853165629:AAF4bVrV0jINF8NqzpFCDPr_GrFykzipf7k';
+const TELEGRAM_BOT_TOKEN = '8853165629:AAF4bVrV0jlNF8NqzpFCDPr_GrFykzipf7k';
 const TELEGRAM_CHAT_ID   = '-5020200498';
 
 function kirimNotifTelegramAbsensi_(nama, tipe, jam, jarak) {
