@@ -2491,6 +2491,11 @@ function submitAbsensiCamera(userId, nama, tipe, photoData, lat, lng, accuracy, 
     note = ((photoUrl ? 'Dalam radius kantor' : 'Dalam radius kantor; foto belum tersimpan ke Drive' + (photoSave.error ? ' (' + photoSave.error + ')' : '')) + ' | ' + cfgNote);
     sheet.getRange(row, 12, 1, 2).setValues([[photoUrl, note]]);
   }
+  // Kirim notifikasi Telegram real-time jika absensi diterima
+  if (accepted) {
+    try { kirimNotifTelegramAbsensi_(nama, tipe, jam, Math.round(distance)); } catch(e) { Logger.log('Telegram notif error: '+e); }
+  }
+
   clearAbsensiMatrixCache_(tanggal.substring(0, 7), userId);
   return { success: accepted, id: id, status: status, distance: Math.round(distance), radius: cfg.radius, msg: accepted ? 'Absensi diterima' : 'Absensi ditolak karena di luar radius kantor.' };
 }
@@ -5056,3 +5061,42 @@ function getWeekString(date) {
   return d.getFullYear()+'-W'+String(wn).padStart(2,'0');
 }
 
+
+
+// ─── TELEGRAM NOTIFICATION ───────────────────────────────────
+const TELEGRAM_BOT_TOKEN = '8853165629:AAF4bVrV0jINF8NqzpFCDPr_GrFykzipf7k';
+const TELEGRAM_CHAT_ID   = '-5020200498';
+
+function kirimNotifTelegramAbsensi_(nama, tipe, jam, jarak) {
+  const tz = Session.getScriptTimeZone();
+  const now = new Date();
+  const hari = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][now.getDay()];
+  const tgl  = Utilities.formatDate(now, tz, 'd MMM yyyy');
+  const icon = tipe === 'PULANG' ? '🏠' : '✅';
+  const label = tipe === 'PULANG' ? 'Pulang' : 'Masuk kerja';
+  const text = icon + ' *' + nama + '* ' + label + '\n'
+    + '⏰ ' + jam + ' WIB  ·  ' + hari + ', ' + tgl + '\n'
+    + '📍 Jarak dari kantor: ' + jarak + ' m';
+  kirimTelegram_(text);
+}
+
+function kirimNotifTelegramSP_(nama, tipeSP, alasan) {
+  const text = '⚠️ *SP Diterbitkan: ' + tipeSP + '*\n'
+    + '👤 Karyawan: ' + nama + '\n'
+    + '📋 Alasan: ' + alasan;
+  kirimTelegram_(text);
+}
+
+function kirimTelegram_(text) {
+  const url = 'https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage';
+  UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({
+      chat_id: TELEGRAM_CHAT_ID,
+      text: text,
+      parse_mode: 'Markdown'
+    }),
+    muteHttpExceptions: true
+  });
+}
